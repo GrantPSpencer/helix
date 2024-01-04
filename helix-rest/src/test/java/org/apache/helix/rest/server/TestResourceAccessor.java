@@ -604,6 +604,7 @@ public class TestResourceAccessor extends AbstractTestClass {
 
   @Test(dependsOnMethods = "testAddResourceWithWeight")
   public void testValidateResource() throws IOException {
+    System.out.println("--- Starting testValidateResource ---");
     // Define weight keys in ClusterConfig
     ClusterConfig clusterConfig = _configAccessor.getClusterConfig(CLUSTER_NAME);
     clusterConfig.setInstanceCapacityKeys(Arrays.asList("FOO", "BAR"));
@@ -613,6 +614,10 @@ public class TestResourceAccessor extends AbstractTestClass {
     for (String instance : _instancesMap.get(CLUSTER_NAME)) {
       InstanceConfig instanceConfig = _configAccessor.getInstanceConfig(CLUSTER_NAME, instance);
       instanceConfig.setInstanceCapacityMap(Collections.emptyMap());
+
+      Map<String, String> oldDomainMap = instanceConfig.getDomainAsMap();
+      System.out.println(oldDomainMap.toString());
+      instanceConfig.setDomain("domain=gspencer_test");
       _configAccessor.setInstanceConfig(CLUSTER_NAME, instance, instanceConfig);
     }
 
@@ -636,6 +641,8 @@ public class TestResourceAccessor extends AbstractTestClass {
         ImmutableMap.of("command", "validateWeight"), Response.Status.OK.getStatusCode(), true);
     JsonNode node = OBJECT_MAPPER.readTree(body);
     Assert.assertEquals(node.get(resourceToValidate).toString(), "true");
+
+    System.out.println("--- Finished testValidateResource ---");
   }
 
   /**
