@@ -274,6 +274,7 @@ public class ClusterSetup {
 
   public void addInstanceToCluster(String clusterName, String instanceId) {
     InstanceConfig config = InstanceConfig.toInstanceConfig(instanceId);
+    config.setDomain("zone=defaultZone");
     _admin.addInstance(clusterName, config);
   }
 
