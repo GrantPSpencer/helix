@@ -274,7 +274,7 @@ public class ClusterSetup {
 
   public void addInstanceToCluster(String clusterName, String instanceId) {
     InstanceConfig config = InstanceConfig.toInstanceConfig(instanceId);
-    // config.setDomain("helixZoneId=zone0");
+    config.setDomain("domain=gspencer_test");
     _admin.addInstance(clusterName, config);
   }
 

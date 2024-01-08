@@ -617,7 +617,7 @@ public class TestResourceAccessor extends AbstractTestClass {
 
       Map<String, String> oldDomainMap = instanceConfig.getDomainAsMap();
       System.out.println(oldDomainMap.toString());
-      instanceConfig.setDomain("domain=gspencer_test");
+      // instanceConfig.setDomain("domain=gspencer_test");
       _configAccessor.setInstanceConfig(CLUSTER_NAME, instance, instanceConfig);
     }
 
@@ -636,6 +636,7 @@ public class TestResourceAccessor extends AbstractTestClass {
       _configAccessor.setInstanceConfig(CLUSTER_NAME, instance, instanceConfig);
     }
 
+    System.out.println("--- right before testValidateResource should fail ---");
     // Now try validating again - it should go through and return a 200
     String body = get("clusters/" + CLUSTER_NAME + "/resources/" + resourceToValidate,
         ImmutableMap.of("command", "validateWeight"), Response.Status.OK.getStatusCode(), true);
