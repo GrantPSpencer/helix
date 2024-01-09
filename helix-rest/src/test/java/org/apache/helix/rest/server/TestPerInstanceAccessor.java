@@ -357,6 +357,8 @@ public class TestPerInstanceAccessor extends AbstractTestClass {
 
     new JerseyUriRequestBuilder("clusters/{}/instances/{}").format(CLUSTER_NAME, INSTANCE_NAME)
         .put(this, entity);
+    // TODO : Add to instance map
+
 
     Assert.assertEquals(instanceConfig,
         _configAccessor.getInstanceConfig(CLUSTER_NAME, INSTANCE_NAME + "TEST"));

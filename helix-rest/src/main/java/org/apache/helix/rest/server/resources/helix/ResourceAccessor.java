@@ -219,6 +219,7 @@ public class ResourceAccessor extends AbstractHelixResource {
         validationResultMap = admin.validateResourcesForWagedRebalance(clusterId,
             Collections.singletonList(resourceName));
       } catch (HelixException e) {
+        System.out.println(e.getMessage());
         return badRequest(e.getMessage());
       }
       return JSONRepresentation(validationResultMap);

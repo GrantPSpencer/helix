@@ -639,10 +639,10 @@ public class TestResourceAccessor extends AbstractTestClass {
     System.out.println("--- right before testValidateResource should fail ---");
     // Now try validating again - it should go through and return a 200
     String body = get("clusters/" + CLUSTER_NAME + "/resources/" + resourceToValidate,
-        ImmutableMap.of("command", "validateWeight"), Response.Status.BAD_REQUEST.getStatusCode(), true);
-    System.out.println(body);
+        ImmutableMap.of("command", "validateWeight"), Response.Status.OK.getStatusCode(), true);
+    // System.out.println(body);
     JsonNode node = OBJECT_MAPPER.readTree(body);
-    System.out.println(node.toPrettyString());
+    // System.out.println(node.toPrettyString());
     Assert.assertEquals(node.get(resourceToValidate).toString(), "true");
 
     System.out.println("--- Finished testValidateResource ---");
