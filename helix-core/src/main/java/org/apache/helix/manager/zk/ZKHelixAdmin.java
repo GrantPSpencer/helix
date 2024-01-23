@@ -1178,9 +1178,15 @@ public class ZKHelixAdmin implements HelixAdmin {
     if (!enabled) {
       // Exit maintenance mode
       accessor.removeProperty(keyBuilder.maintenance());
+      // TODO: Remove maintenance reason function, have it return ZNRecord, if ZNRecord is empty,
+        //  we call delete with expected version - gspencer
     } else {
       // Enter maintenance mode
+      // TODO: Change maintenanceSignal properties
+        // 1. read property from existing maintenance signal from ZK, if it does not exist create new one
+        // 2. Create a new signal in that maintenanceSignal (change the maintenance signal class to have a subclass of signals)
       MaintenanceSignal maintenanceSignal = new MaintenanceSignal(MAINTENANCE_ZNODE_ID);
+
       if (reason != null) {
         maintenanceSignal.setReason(reason);
       }
@@ -1205,7 +1211,7 @@ public class ZKHelixAdmin implements HelixAdmin {
           }
           break;
       }
-      if (!accessor.createMaintenance(maintenanceSignal)) {
+      if (!accessor.updateMaintenanceSignal(maintenanceSignal, )) {
         throw new HelixException("Failed to create maintenance signal!");
       }
     }
@@ -2826,4 +2832,6 @@ public class ZKHelixAdmin implements HelixAdmin {
 
     return offlineInstanceNames;
   }
+
+  // private void
 }

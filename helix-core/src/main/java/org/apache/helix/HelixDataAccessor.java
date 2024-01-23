@@ -46,6 +46,7 @@ public interface HelixDataAccessor {
   boolean createPause(PauseSignal pauseSignal);
 
   boolean createMaintenance(MaintenanceSignal maintenanceSignal);
+  boolean updateMaintenanceSignal(MaintenanceSignal maintenanceSignal, int expectedVersion);
 
   /**
    * Set a property, overwrite if it exists and creates if not exists. This api
