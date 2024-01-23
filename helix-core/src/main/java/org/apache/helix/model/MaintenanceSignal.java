@@ -19,17 +19,74 @@ package org.apache.helix.model;
  * under the License.
  */
 
+import java.util.List;
+import java.util.Map;
+
+import org.apache.helix.HelixProperty;
 import org.apache.helix.zookeeper.datamodel.ZNRecord;
 
 /**
  * A ZNode that signals that the cluster is in maintenance mode.
  */
-public class MaintenanceSignal extends PauseSignal {
+// This class needs to support having multiple reasons. All the operations should be here for handling adding new signals, removing old ones, swapping out the old client reasons, etc.
+public class MaintenanceSignal extends HelixProperty {
 
+  class Signal {
+
+
+
+
+    /**
+     * Pre-defined fields set by Helix Controller only.
+     */
+    private String _reason;
+    private long _timestamp;
+    private TriggeringEntity _triggeringEntity;
+
+    public Signal(String reason) {
+      _reason = reason;
+    }
+    public Signal(String reason, Long timestamp, TriggeringEntity triggeringEntity) {
+      _reason = reason;
+      _timestamp = timestamp;
+      _triggeringEntity = triggeringEntity;
+    }
+
+    public void setTriggeringEntity(TriggeringEntity triggeringEntity) {
+      _triggeringEntity = triggeringEntity;
+    }
+
+    public TriggeringEntity getTriggeringEntity() {
+      return _triggeringEntity;
+    }
+
+    public void setReason(String reason) {
+      _reason = reason;
+    }
+
+    public String getReason() {
+      return _reason;
+    }
+
+    public void setTimestamp(Long timestamp) {
+      _timestamp = timestamp;
+    }
+
+    public long getTimestamp() {
+      return _timestamp;
+    }
+
+  }
+
+  // TODO: Move these enums into signal
   /**
    * Pre-defined fields set by Helix Controller only.
    */
   public enum MaintenanceSignalProperty {
+    // This should be maintenanceSignalProperty
+    REASON,
+    REASONS,
+    // This should be signalProperty
     TRIGGERED_BY,
     TIMESTAMP,
     AUTO_TRIGGER_REASON
@@ -112,4 +169,35 @@ public class MaintenanceSignal extends PauseSignal {
   public long getTimestamp() {
     return _record.getLongField(MaintenanceSignalProperty.TIMESTAMP.name(), -1);
   }
+
+  /**
+   * Set the reason why the cluster is paused.
+   * @param reason
+   */
+  public void setReason(String reason) {
+    _record.setSimpleField(PauseSignal.PauseSignalProperty.REASON.name(), reason);
+  }
+
+  public String getReason() {
+    return _record.getSimpleField(PauseSignal.PauseSignalProperty.REASON.name());
+  }
+
+  public String getReasonSimpleField() {
+    return _record.getSimpleField(MaintenanceSignalProperty.REASON.name());
+  }
+
+  public List<String> getReasonsListField() {
+    return _record.getListField(MaintenanceSignalProperty.REASONS.name());
+  }
+
+  public Map<String, String> getReasonsMapField() {
+    return _record.getMapField(MaintenanceSignalProperty.REASONS.name());
+  }
+
+  //  Changes
+  public void addSignal(Signal signal) {
+    // 1. Check if
+  }
+
+
 }

@@ -32,6 +32,7 @@ public class PauseSignal extends HelixProperty {
 
   public enum PauseSignalProperty {
     REASON,
+    REASONS,
     CLUSTER_FREEZE,
     FROM_HOST,
     CANCEL_PENDING_ST,

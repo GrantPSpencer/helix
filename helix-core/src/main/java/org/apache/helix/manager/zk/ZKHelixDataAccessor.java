@@ -122,8 +122,14 @@ public class ZKHelixDataAccessor implements HelixDataAccessor {
 
   @Override
   public boolean createMaintenance(MaintenanceSignal maintenanceSignal) {
+    // TODO: Change to expect version
+    return updateMaintenanceSignal(maintenanceSignal, -1);
+  }
+
+  @Override
+  public boolean updateMaintenanceSignal(MaintenanceSignal maintenanceSignal, int expectedVersion) {
     return _baseDataAccessor.set(PropertyPathBuilder.maintenance(_clusterName),
-        maintenanceSignal.getRecord(), AccessOption.PERSISTENT);
+        maintenanceSignal.getRecord(), expectedVersion, AccessOption.PERSISTENT);
   }
 
   @Override

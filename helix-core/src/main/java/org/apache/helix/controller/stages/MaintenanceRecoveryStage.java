@@ -53,6 +53,8 @@ public class MaintenanceRecoveryStage extends AbstractAsyncBaseStage {
       return;
     }
 
+    // TODO: make this compatible with new multiple maintenance reasons key - GSPENCER
+
     // Check if the maintenance signal has been changed during this pipeline run
     // If true, skip this stage because the Controller already changed the signal
     // The flag will be flipped in the next ReadClusterDataStage()
@@ -117,6 +119,7 @@ public class MaintenanceRecoveryStage extends AbstractAsyncBaseStage {
       // MaintenanceSignal. AutoTriggerReason won't be recorded
       manager.getClusterManagmentTool().autoEnableMaintenanceMode(manager.getClusterName(), false,
           reason, internalReason);
+      // TODO: this should be dependent on return of autoEnableMaintenanceMode
       cache.setMaintenanceSignalChanged(); // Set the flag so we do not double enable/disable
       LogUtil.logInfo(LOG, _eventId, reason);
     }
