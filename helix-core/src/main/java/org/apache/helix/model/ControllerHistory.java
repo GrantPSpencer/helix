@@ -181,8 +181,7 @@ public class ControllerHistory extends HelixProperty {
    * @param customFields
    * @param triggeringEntity
    */
-  public ZNRecord updateMaintenanceHistory(boolean enabled, String reason, long currentTime,
-      MaintenanceSignal.AutoTriggerReason internalReason, Map<String, String> customFields,
+  public ZNRecord updateMaintenanceHistory(boolean enabled, String reason, long currentTime, Map<String, String> customFields,
       MaintenanceSignal.TriggeringEntity triggeringEntity) throws IOException {
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH:" + "mm:ss");
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -198,18 +197,12 @@ public class ControllerHistory extends HelixProperty {
         String.valueOf(currentTime));
     maintenanceEntry.put(MaintenanceSignal.MaintenanceSignalProperty.TRIGGERED_BY.name(),
         triggeringEntity.name());
-    if (triggeringEntity == MaintenanceSignal.TriggeringEntity.CONTROLLER) {
-      // If auto-triggered
-      maintenanceEntry.put(MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(),
-          internalReason.name());
-    } else {
-      // If manually triggered
-      if (customFields != null && !customFields.isEmpty()) {
-        for (Map.Entry<String, String> customFieldEntry : customFields.entrySet()) {
-          if (!maintenanceEntry.containsKey(customFieldEntry.getKey())) {
-            // Make sure custom entries do not overwrite pre-defined fields
-            maintenanceEntry.put(customFieldEntry.getKey(), customFieldEntry.getValue());
-          }
+    // If manually triggered
+    if (customFields != null && !customFields.isEmpty()) {
+      for (Map.Entry<String, String> customFieldEntry : customFields.entrySet()) {
+        if (!maintenanceEntry.containsKey(customFieldEntry.getKey())) {
+          // Make sure custom entries do not overwrite pre-defined fields
+          maintenanceEntry.put(customFieldEntry.getKey(), customFieldEntry.getValue());
         }
       }
     }
