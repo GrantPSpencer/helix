@@ -112,6 +112,13 @@ public interface BaseDataAccessor<T> {
    */
   boolean remove(String path, int options);
 
+  // TODO: gspencer implement
+  // ZKBaseDataAccessor
+  // ZKCacheBaseDataAccessor
+  // MockBaseDataAccessor
+  // AutoFallbackProperty store
+  boolean remove(String path, int expectedVersion, int options);
+
   /**
    * This will remove the ZNode, if the ZNode's version matches the provided expectedVersion. This
    * operation will fail if the node has any children.
