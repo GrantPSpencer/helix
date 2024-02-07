@@ -84,6 +84,7 @@ public class GroupCommit {
     return commit(accessor, options, key, record, false);
   }
 
+  // TODO: gspencer use this to remove maintenance signal if its empty
   public boolean commit(BaseDataAccessor<ZNRecord> accessor, int options, String key,
       ZNRecord record, boolean removeIfEmpty) {
     Queue queue = getQueue(key);
