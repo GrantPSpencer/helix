@@ -21,6 +21,7 @@ package org.apache.helix.integration.controller;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -236,8 +237,10 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
 
     // Check that maintenance signal was triggered by Controller
     MaintenanceSignal maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
-    Assert.assertNotNull(maintenanceSignal);
-    Assert.assertEquals(maintenanceSignal.getTriggeringEntity(),
+    List<MaintenanceSignal.Signal> signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+    MaintenanceSignal.Signal signal = signals.get(0);
+    Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
 
     // Manually enable maintenance mode with customFields
@@ -249,14 +252,19 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
 
     // Check that maintenance mode has successfully overwritten with the right TRIGGERED_BY field
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
-    Assert.assertEquals(maintenanceSignal.getTriggeringEntity(),
+    signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+    signal = signals.get(0);
+    Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.USER);
     for (Map.Entry<String, String> entry : customFields.entrySet()) {
       if (entry.getKey().equals("TRIGGERED_BY")) {
-        Assert.assertEquals(maintenanceSignal.getRecord().getSimpleField(entry.getKey()), "USER");
+        Assert.assertEquals(signal.get(entry.getKey()),
+            MaintenanceSignal.TriggeringEntity.USER.name());
       } else {
         Assert.assertEquals(maintenanceSignal.getRecord().getSimpleField(entry.getKey()),
             entry.getValue());
+        Assert.assertEquals(signal.get(entry.getKey()), entry.getValue());
       }
     }
   }
@@ -273,13 +281,16 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
         null);
     TestHelper.verify(() -> _dataAccessor.getProperty(_keyBuilder.maintenance()) != null, 2000L);
 
+
     // Since 3 instances are missing, the cluster should have gone back under maintenance
     // automatically
     MaintenanceSignal maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
-    Assert.assertNotNull(maintenanceSignal);
-    Assert.assertEquals(maintenanceSignal.getTriggeringEntity(),
+    List<MaintenanceSignal.Signal> signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+    MaintenanceSignal.Signal signal = signals.get(0);
+    Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
-    Assert.assertEquals(maintenanceSignal.getAutoTriggerReason(),
+    Assert.assertEquals(signal.getAutoTriggerReason(),
         MaintenanceSignal.AutoTriggerReason.MAX_INSTANCES_UNABLE_TO_ACCEPT_ONLINE_REPLICAS);
 
     // Bring up all instances
@@ -302,10 +313,12 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
 
     // Check that cluster is back under maintenance
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
-    Assert.assertNotNull(maintenanceSignal);
-    Assert.assertEquals(maintenanceSignal.getTriggeringEntity(),
+    signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+    signal = signals.get(0);
+    Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
-    Assert.assertEquals(maintenanceSignal.getAutoTriggerReason(),
+    Assert.assertEquals(signal.getAutoTriggerReason(),
         MaintenanceSignal.AutoTriggerReason.MAX_INSTANCES_UNABLE_TO_ACCEPT_ONLINE_REPLICAS);
 
     // Set the cluster config for auto-exiting maintenance mode
@@ -329,11 +342,14 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
 
     // Check that the cluster is still in maintenance (should not have auto-exited because it would
     // fail the MaxPartitionsPerInstance check)
+
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
-    Assert.assertNotNull(maintenanceSignal);
-    Assert.assertEquals(maintenanceSignal.getTriggeringEntity(),
+    signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+    signal = signals.get(0);
+    Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
-    Assert.assertEquals(maintenanceSignal.getAutoTriggerReason(),
+    Assert.assertEquals(signal.getAutoTriggerReason(),
         MaintenanceSignal.AutoTriggerReason.MAX_PARTITION_PER_INSTANCE_EXCEEDED);
 
     // Check if failed rebalance counter is updated

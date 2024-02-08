@@ -20,14 +20,9 @@ package org.apache.helix.model;
  */
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -44,53 +39,67 @@ public class MaintenanceSignal extends HelixProperty {
   public static int UPDATE_SIGNAL_RETRY_LIMIT = 5;
   private ObjectMapper _objectMapper = new ObjectMapper();
 
-  // class Signal {
-  //
-  //   /**
-  //    * Pre-defined fields set by Helix Controller only.
-  //    */
-  //   private String _reason;
-  //   private long _timestamp;
-  //   private TriggeringEntity _triggeringEntity;
-  //
-  //
-  //
-  //   public Signal(String reason) {
-  //     _reason = reason;
-  //   }
-  //   public Signal(String reason, Long timestamp, TriggeringEntity triggeringEntity) {
-  //     _reason = reason;
-  //     _timestamp = timestamp;
-  //     _triggeringEntity = triggeringEntity;
-  //   }
-  //
-  //   public void setTriggeringEntity(TriggeringEntity triggeringEntity) {
-  //     _triggeringEntity = triggeringEntity;
-  //   }
-  //
-  //   public TriggeringEntity getTriggeringEntity() {
-  //     return _triggeringEntity;
-  //   }
-  //
-  //   public void setReason(String reason) {
-  //     _reason = reason;
-  //   }
-  //
-  //   public String getReason() {
-  //     return _reason;
-  //   }
-  //
-  //   public void setTimestamp(Long timestamp) {
-  //     _timestamp = timestamp;
-  //   }
-  //
-  //   public long getTimestamp() {
-  //     return _timestamp;
-  //   }
-  //
-  // }
+  public class Signal {
+    private final Map<String, String> _map;
+    public Signal(Map<String, String> map) {
+      _map = map;
+    }
 
-  // TODO: Move these enums into signal
+    /**
+     * Returns auto-trigger reason.
+     * @return AutoTriggerReason.NOT_APPLICABLE if it was not triggered automatically
+     */
+    public AutoTriggerReason getAutoTriggerReason() {
+      try {
+        return AutoTriggerReason
+            .valueOf(_map.get(MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name()));
+      } catch (Exception e) {
+        return AutoTriggerReason.NOT_APPLICABLE;
+      }
+    }
+
+    /**
+     * Returns reason why the cluster is in maintenance mode
+     * @return null if field does not exist
+     */
+    public String getReason() {
+      return _map.get(MaintenanceSignalProperty.REASON.name());
+    }
+
+    /**
+     * Returns last modified time.
+     * TODO: Consider using modifiedTime in ZK Stat object.
+     * @return -1 if the field does not exist.
+     */
+    public long getTimestamp() {
+      long value = -1;
+      String valueStr = _map.get(MaintenanceSignalProperty.TIMESTAMP.name());
+      if (valueStr != null) {
+        try {
+          value = Long.parseLong(valueStr);
+        } catch (NumberFormatException ignored) {}
+      }
+      return value;
+    }
+
+    /**
+     * Returns triggering entity.
+     * @return TriggeringEntity.UNKNOWN if the field does not exist.
+     */
+    public TriggeringEntity getTriggeringEntity() {
+      try {
+        return TriggeringEntity
+            .valueOf(_map.get(MaintenanceSignalProperty.TRIGGERED_BY.name()));
+      } catch (Exception e) {
+        return TriggeringEntity.UNKNOWN;
+      }
+    }
+
+    public String get(String key) {
+      return _map.get(key);
+    }
+  }
+
   /**
    * Pre-defined fields set by Helix Controller only.
    */
@@ -134,91 +143,15 @@ public class MaintenanceSignal extends HelixProperty {
     super(record);
   }
 
-  public void setTriggeringEntity(TriggeringEntity triggeringEntity) {
-    _record.setSimpleField(MaintenanceSignalProperty.TRIGGERED_BY.name(), triggeringEntity.name());
-  }
-
-  /**
-   * Returns triggering entity.
-   * @return TriggeringEntity.UNKNOWN if the field does not exist.
-   */
-  public TriggeringEntity getTriggeringEntity() {
-    try {
-      return TriggeringEntity
-          .valueOf(_record.getSimpleField(MaintenanceSignalProperty.TRIGGERED_BY.name()));
-    } catch (Exception e) {
-      return TriggeringEntity.UNKNOWN;
-    }
-  }
-
-  public void setAutoTriggerReason(AutoTriggerReason internalReason) {
-    _record.setSimpleField(MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(),
-        internalReason.name());
-  }
-
-  /**
-   * Returns auto-trigger reason.
-   * @return AutoTriggerReason.NOT_APPLICABLE if it was not triggered automatically
-   */
-  public AutoTriggerReason getAutoTriggerReason() {
-    try {
-      return AutoTriggerReason
-          .valueOf(_record.getSimpleField(MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name()));
-    } catch (Exception e) {
-      return AutoTriggerReason.NOT_APPLICABLE;
-    }
-  }
-
-  public void setTimestamp(long timestamp) {
-    _record.setLongField(MaintenanceSignalProperty.TIMESTAMP.name(), timestamp);
-  }
-
-  /**
-   * Returns last modified time.
-   * TODO: Consider using modifiedTime in ZK Stat object.
-   * @return -1 if the field does not exist.
-   */
-  public long getTimestamp() {
-    return _record.getLongField(MaintenanceSignalProperty.TIMESTAMP.name(), -1);
-  }
-
-  /**
-   * Set the reason why the cluster is paused.
-   * @param reason
-   */
-  public void setReason(String reason) {
-    _record.setSimpleField(PauseSignal.PauseSignalProperty.REASON.name(), reason);
-  }
-
-  public String getReason() {
-    return _record.getSimpleField(PauseSignal.PauseSignalProperty.REASON.name());
-  }
-
-  public String getSimpleFieldReason() {
-    return _record.getSimpleField(MaintenanceSignalProperty.REASON.name());
-  }
-  public long getSimpleFieldTimestamp() {
-    return _record.getLongField(MaintenanceSignalProperty.TIMESTAMP.name(), -1);
-  }
-
-  public TriggeringEntity getSimpleFieldTriggeringEntity() {
-    try {
-      return TriggeringEntity
-          .valueOf(_record.getSimpleField(MaintenanceSignalProperty.TRIGGERED_BY.name()));
-    } catch (Exception e) {
-      return TriggeringEntity.UNKNOWN;
-    }
-  }
-
-  public List<String> getListFieldReasons() {
+  public List<String> getReasonsSerialized() {
     return _record.getListField(MaintenanceSignalProperty.REASONS.name());
   }
 
-  public List<Map<String, String>> getListFieldReasonsDeserialized() {
-    return getListFieldReasons().stream()
+  public List<Signal> getReasons() {
+    return getReasonsSerialized().stream()
         .map(jsonString -> {
           try {
-            return _objectMapper.readValue(jsonString, new TypeReference<Map<String, String>>() {});
+            return new Signal(_objectMapper.readValue(jsonString, new TypeReference<Map<String, String>>() {}));
           } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize maintenanceReason object in listField", e);
           }
@@ -238,7 +171,7 @@ public class MaintenanceSignal extends HelixProperty {
 
     // Add new reason to both simpleField and ListField
     writeMaintenanceReasonToSimpleFields(reason, timestamp, triggeringEntity, customFields);
-    getListFieldReasons().add(_objectMapper.writeValueAsString(createMaintenanceReasonObject(
+    getReasonsSerialized().add(_objectMapper.writeValueAsString(createMaintenanceReasonObject(
         reason, timestamp, triggeringEntity, customFields).toString()));
   }
 
@@ -252,43 +185,41 @@ public class MaintenanceSignal extends HelixProperty {
 
     checkAndStoreSimpleFieldReason();
 
-    List<Map<String, String>> maintenanceReasons = getListFieldReasonsDeserialized();
+    List<Signal> maintenanceReasons = getReasons();
     if (maintenanceReasons.isEmpty()) {
       throw new HelixException(String.format(
           "Attempted to remove maintenance reason %s but current reasons list is empty", reason));
     }
 
     // TODO: change back to foreach
-    Map<String, String> matchedMaintenanceReasonObject = null;
     int matchedMaintenanceReasonIndex = -1;
     for (int i = 0; i < maintenanceReasons.size(); i++) {
-      String currMaintenanceReason =
-          maintenanceReasons.get(i).getOrDefault(MaintenanceSignalProperty.REASON.name(), null);
+      String currMaintenanceReason = maintenanceReasons.get(i).getReason();
       if (reason.equals(currMaintenanceReason)) {
-        matchedMaintenanceReasonObject = maintenanceReasons.get(i);
         matchedMaintenanceReasonIndex = i;
         break;
       }
     }
 
-    if (matchedMaintenanceReasonObject == null || matchedMaintenanceReasonIndex == -1) {
+    if (matchedMaintenanceReasonIndex == -1) {
       throw new HelixException(
           String.format("Attempted to remove maintenance reason %s did not exist", reason));
     }
 
-    maintenanceReasons.remove(matchedMaintenanceReasonIndex);
+    getReasonsSerialized().remove(matchedMaintenanceReasonIndex);
 
     checkAndStoreSimpleFieldReason();
   }
 
   private void checkAndStoreSimpleFieldReason() throws IOException {
-    List<String> maintenanceReasons = getListFieldReasons();
+    List<String> maintenanceReasons = getReasonsSerialized();
     // Backwards compatibility check, as old clients do not write maintenance reason to listField
     // Most recent won't be in list if it's from old client, need to add to the list before adding new reason
     if (!maintenanceReasons.isEmpty() &&
-        !maintenanceReasons.get(maintenanceReasons.size()-1).equals(getSimpleFieldReason())) {
+        !maintenanceReasons.get(maintenanceReasons.size()-1).equals(
+            _record.getSimpleField(MaintenanceSignalProperty.REASON.name()))) {
       // Try to write maintenance object currently in simpleFields to listFields
-      getListFieldReasons().add(_objectMapper.
+      getReasonsSerialized().add(_objectMapper.
           writeValueAsString(_record.getSimpleFields()));
 
     }

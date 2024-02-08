@@ -126,31 +126,37 @@ public class TestClusterInMaintenanceModeWhenReachingOfflineInstancesLimit exten
 
     HelixAdmin admin = new ZKHelixAdmin(_gZkClient);
 
-    // disable instance
+    // disable instances up to allowed offline limit
     int i;
     for (i = 2; i < 2 + _maxOfflineInstancesAllowed; i++) {
       String instance = _participants.get(i).getInstanceName();
       admin.enableInstance(CLUSTER_NAME, instance, false);
     }
 
+    // Assert cluster not in maintenance mode
     boolean result = TestHelper.verify(() -> {
       MaintenanceSignal ms = _dataAccessor.getProperty(_dataAccessor.keyBuilder().maintenance());
       return ms == null;
     }, TestHelper.WAIT_DURATION);
     Assert.assertTrue(result);
 
+    // Disable another instance and exceed allowed offline limit
     String instance = _participants.get(i).getInstanceName();
     admin.enableInstance(CLUSTER_NAME, instance, false);
 
+    // Wait for cluster to converge
     ZkHelixClusterVerifier clusterVerifier =
         new BestPossibleExternalViewVerifier.Builder(CLUSTER_NAME).setZkClient(_gZkClient)
             .setWaitTillVerify(TestHelper.DEFAULT_REBALANCE_PROCESSING_WAIT_TIME)
             .build();
     Assert.assertTrue(clusterVerifier.verifyByPolling());
 
+    // Assert cluster is in maintenance mode for MAX_OFFLINE_INSTANCES_EXCEEDED reason
     result = TestHelper.verify(() -> {
       MaintenanceSignal ms =_dataAccessor.getProperty(_dataAccessor.keyBuilder().maintenance());
-      return ms != null && ms.getReason() != null;
+      return ms != null && ms.getReasonsSerialized() != null && ms.getReasons().get(0)
+          .getAutoTriggerReason().equals(
+          MaintenanceSignal.AutoTriggerReason.MAX_OFFLINE_INSTANCES_EXCEEDED);
     }, TestHelper.WAIT_DURATION);
     Assert.assertTrue(result);
 
@@ -160,6 +166,7 @@ public class TestClusterInMaintenanceModeWhenReachingOfflineInstancesLimit exten
       instance = _participants.get(i).getInstanceName();
       admin.enableInstance(CLUSTER_NAME, instance, true);
     }
+    // TODO: gspencer figure this test out
     admin.enableMaintenanceMode(CLUSTER_NAME, false);
 
     Assert.assertTrue(clusterVerifier.verifyByPolling());

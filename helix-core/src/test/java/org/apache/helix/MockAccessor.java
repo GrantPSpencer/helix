@@ -78,6 +78,11 @@ public class MockAccessor implements HelixDataAccessor {
   }
 
   @Override
+  public boolean updateMaintenanceSignal(MaintenanceSignal maintenanceSignal, int expectedVersion) {
+    return false;
+  }
+
+  @Override
   public boolean setProperty(PropertyKey key, HelixProperty value) {
     String path = key.getPath();
     _baseDataAccessor.set(path, value.getRecord(), AccessOption.PERSISTENT);

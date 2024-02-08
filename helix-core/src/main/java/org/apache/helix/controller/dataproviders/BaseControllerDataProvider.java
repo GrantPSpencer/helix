@@ -1115,7 +1115,7 @@ public class BaseControllerDataProvider implements ControlContextProvider {
         onlineTimestampIndex--) {
       long onlineWindowRight = onlineTimestamps.get(onlineTimestampIndex);
       // We don't care about offline windows before maintenance mode starts
-      if (onlineWindowRight <= _maintenanceSignal.getTimestamp()) {
+      if (onlineWindowRight <= _maintenanceSignal.getSimpleFieldTimestamp()) {
         break;
       }
       long onlineWindowLeft = 0L;
