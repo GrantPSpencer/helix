@@ -177,7 +177,6 @@ public class ControllerHistory extends HelixProperty {
    * @param enabled
    * @param reason
    * @param currentTime
-   * @param internalReason
    * @param customFields
    * @param triggeringEntity
    */
@@ -197,7 +196,6 @@ public class ControllerHistory extends HelixProperty {
         String.valueOf(currentTime));
     maintenanceEntry.put(MaintenanceSignal.MaintenanceSignalProperty.TRIGGERED_BY.name(),
         triggeringEntity.name());
-    // If manually triggered
     if (customFields != null && !customFields.isEmpty()) {
       for (Map.Entry<String, String> customFieldEntry : customFields.entrySet()) {
         if (!maintenanceEntry.containsKey(customFieldEntry.getKey())) {

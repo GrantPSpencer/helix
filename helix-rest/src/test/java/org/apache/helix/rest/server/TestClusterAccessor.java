@@ -616,13 +616,15 @@ public class TestClusterAccessor extends AbstractTestClass {
         Entity.entity(content, MediaType.APPLICATION_JSON_TYPE),
         Response.Status.OK.getStatusCode());
 
-    MaintenanceSignal signal = accessor.getProperty(accessor.keyBuilder().maintenance());
-    Assert.assertNotNull(signal);
+    MaintenanceSignal maintenanceSignal = accessor.getProperty(accessor.keyBuilder().maintenance());
+    List<MaintenanceSignal.Signal> signals = maintenanceSignal.getReasons();
+    Assert.assertTrue(signals.size() == 1);
+
+    MaintenanceSignal.Signal signal = signals.get(0);
     Assert.assertNull(signal.getReason());
     Assert.assertEquals(signal.getTriggeringEntity(), MaintenanceSignal.TriggeringEntity.USER);
-    Map<String, String> simpleFields = signal.getRecord().getSimpleFields();
-    Assert.assertEquals(simpleFields.get("key1"), "value1");
-    Assert.assertEquals(simpleFields.get("key2"), "value2");
+    Assert.assertEquals(signal.get("key1"), "value1");
+    Assert.assertEquals(signal.get("key2"), "value2");
 
     post("clusters/" + cluster, ImmutableMap.of("command", "disableMaintenanceMode"),
         Entity.entity("", MediaType.APPLICATION_JSON_TYPE), Response.Status.OK.getStatusCode());

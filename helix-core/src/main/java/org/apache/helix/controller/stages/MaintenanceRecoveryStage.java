@@ -65,8 +65,14 @@ public class MaintenanceRecoveryStage extends AbstractAsyncBaseStage {
     // Check for the maintenance signal
     // If it was entered manually or the signal is null (which shouldn't happen), skip this stage
     MaintenanceSignal maintenanceSignal = cache.getMaintenanceSignal();
-    if (maintenanceSignal == null || maintenanceSignal
-        .getTriggeringEntity() != MaintenanceSignal.TriggeringEntity.CONTROLLER) {
+    if (maintenanceSignal == null) {
+      return;
+    }
+
+    MaintenanceSignal.Signal controllerTriggeredSignal = maintenanceSignal.getReasons().stream().filter(sig ->
+        sig.getTriggeringEntity() == MaintenanceSignal.TriggeringEntity.CONTROLLER).findFirst()
+        .orElse(null);
+    if (controllerTriggeredSignal == null) {
       return;
     }
 
@@ -79,7 +85,8 @@ public class MaintenanceRecoveryStage extends AbstractAsyncBaseStage {
 
     // At this point, the cluster entered maintenance mode automatically. Retrieve the
     // auto-triggering reason
-    MaintenanceSignal.AutoTriggerReason internalReason = maintenanceSignal.getAutoTriggerReason();
+    MaintenanceSignal.AutoTriggerReason internalReason = controllerTriggeredSignal
+        .getAutoTriggerReason();
     boolean shouldExitMaintenance;
     String reason;
     switch (internalReason) {
