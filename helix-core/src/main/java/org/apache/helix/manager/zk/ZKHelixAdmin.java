@@ -1179,6 +1179,7 @@ public class ZKHelixAdmin implements HelixAdmin {
       final long currentTime = System.currentTimeMillis();
       MaintenanceSignal maintenanceSignal = accessor.getProperty(keyBuilder.maintenance());
       boolean success;
+      boolean maintenanceStateFlipped = false;
       if (!enabled) {
         // Exit maintenance mode
 
@@ -1199,6 +1200,8 @@ public class ZKHelixAdmin implements HelixAdmin {
         if (fullyExitMaintenanceMode) {
           // TODO: Delete expected version
           success = accessor.removeProperty(accessor.keyBuilder().maintenance());
+          // success = accessor.getBaseDataAccessor().remove(accessor.keyBuilder().maintenance().getPath(), expectedVersion, AccessOption.PERSISTENT);
+          maintenanceStateFlipped = true;
         } else {
           success = accessor.updateMaintenanceSignal(maintenanceSignal,
               maintenanceSignal.getStat().getVersion());
@@ -1207,8 +1210,10 @@ public class ZKHelixAdmin implements HelixAdmin {
         // Enter maintenance mode
 
         // Create new maintenanceSignal if no existing one
-        maintenanceSignal = maintenanceSignal != null ?
-            maintenanceSignal : new MaintenanceSignal(MAINTENANCE_ZNODE_ID);
+        if (maintenanceSignal == null) {
+          maintenanceSignal = new MaintenanceSignal(MAINTENANCE_ZNODE_ID);
+          maintenanceStateFlipped = true;
+        }
 
         try {
           maintenanceSignal.addMaintenanceReason(reason, currentTime, triggeringEntity,
@@ -1222,8 +1227,17 @@ public class ZKHelixAdmin implements HelixAdmin {
       }
       // Record maintenance history and break out early if write operation was successful
       if (success) {
+        boolean inMaintenanceOnExit = enabled || !maintenanceStateFlipped;
+        //  enter = true
+          //  state flip = true --> in maintenance
+          //  state flip = false --> in maintenance
+        //  enter = false (aka exit)
+          //  state flip = true --> not in maintenacnce
+          //  state flip = false --> in maintenance
+
+        //     only not in mainteancne when flip = true on exit
         recordMaintenanceHistory(clusterName, enabled, reason, customFields, triggeringEntity,
-            currentTime);
+            currentTime, inMaintenanceOnExit);
         break;
       }
       retryCount++;
@@ -1236,7 +1250,8 @@ public class ZKHelixAdmin implements HelixAdmin {
 
   private void recordMaintenanceHistory(String clusterName, final boolean enabled,
       final String reason, final Map<String, String> customFields,
-      final MaintenanceSignal.TriggeringEntity triggeringEntity, Long currentTime) {
+      final MaintenanceSignal.TriggeringEntity triggeringEntity, Long currentTime,
+      final boolean inMaintenanceOnExit) {
     HelixDataAccessor accessor =
         new ZKHelixDataAccessor(clusterName, new ZkBaseDataAccessor<ZNRecord>(_zkClient));
     PropertyKey.Builder keyBuilder = accessor.keyBuilder();
@@ -1246,7 +1261,7 @@ public class ZKHelixAdmin implements HelixAdmin {
           oldRecord = new ZNRecord(PropertyType.HISTORY.toString());
         }
         return new ControllerHistory(oldRecord).updateMaintenanceHistory(enabled, reason,
-            currentTime, customFields, triggeringEntity);
+            currentTime, customFields, triggeringEntity, inMaintenanceOnExit);
       } catch (IOException e) {
         logger.error("Failed to update maintenance history! Exception: {}", e);
         return oldRecord;
