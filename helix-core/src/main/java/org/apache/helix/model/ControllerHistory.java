@@ -56,7 +56,8 @@ public class ControllerHistory extends HelixProperty {
     MAINTENANCE_HISTORY,
     OPERATION_TYPE,
     DATE,
-    REASON
+    REASON,
+    IN_MAINTENANCE_ON_EXIT
 
   }
 
@@ -181,7 +182,8 @@ public class ControllerHistory extends HelixProperty {
    * @param triggeringEntity
    */
   public ZNRecord updateMaintenanceHistory(boolean enabled, String reason, long currentTime, Map<String, String> customFields,
-      MaintenanceSignal.TriggeringEntity triggeringEntity) throws IOException {
+      MaintenanceSignal.TriggeringEntity triggeringEntity, final boolean inMaintenanceOnExit)
+      throws IOException {
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH:" + "mm:ss");
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
     String dateTime = df.format(new Date(currentTime));
@@ -196,6 +198,8 @@ public class ControllerHistory extends HelixProperty {
         String.valueOf(currentTime));
     maintenanceEntry.put(MaintenanceSignal.MaintenanceSignalProperty.TRIGGERED_BY.name(),
         triggeringEntity.name());
+    maintenanceEntry.put(MaintenanceConfigKey.IN_MAINTENANCE_ON_EXIT.name(),
+        String.valueOf(inMaintenanceOnExit));
     if (customFields != null && !customFields.isEmpty()) {
       for (Map.Entry<String, String> customFieldEntry : customFields.entrySet()) {
         if (!maintenanceEntry.containsKey(customFieldEntry.getKey())) {
