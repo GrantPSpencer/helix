@@ -168,6 +168,11 @@ public class CardDealingAdjustmentAlgorithmV2 {
       partitionDealing(_instanceFaultZone.keySet(), toBeReassigned, _faultZonePartitionMap,
           _instanceFaultZone, nodeToPartitionMap, targetPartitionCount, randomSeed, adjustment++);
     }
+    if (!toBeReassigned.isEmpty()) {
+      int replicasToBeAssigned = toBeReassigned.values().stream().mapToInt(Integer::intValue).sum();
+      partitionDealing(_instanceFaultZone.keySet(), toBeReassigned, _faultZonePartitionMap,
+          _instanceFaultZone, nodeToPartitionMap, targetPartitionCount, randomSeed, replicasToBeAssigned);
+    }
     return toBeReassigned.isEmpty();
   }
 
