@@ -256,8 +256,8 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
               if (manager.getHelixDataAccessor()
                   .getProperty(manager.getHelixDataAccessor().keyBuilder().maintenance()) == null) {
                 manager.getClusterManagmentTool()
-                    .autoEnableMaintenanceMode(manager.getClusterName(), true, errMsg,
-                        MaintenanceSignal.AutoTriggerReason.MAX_PARTITION_PER_INSTANCE_EXCEEDED);
+                    .autoEnableMaintenanceMode(manager.getClusterName(), true,
+                        MaintenanceSignal.AutoTriggerReason.MAX_PARTITION_PER_INSTANCE_EXCEEDED.name(), errMsg);
               }
               LogUtil.logWarn(logger, _eventId, errMsg);
             } else {

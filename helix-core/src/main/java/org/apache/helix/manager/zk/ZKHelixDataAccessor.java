@@ -128,8 +128,20 @@ public class ZKHelixDataAccessor implements HelixDataAccessor {
 
   @Override
   public boolean updateMaintenanceSignal(MaintenanceSignal maintenanceSignal, int expectedVersion) {
-    return _baseDataAccessor.set(PropertyPathBuilder.maintenance(_clusterName),
-        maintenanceSignal.getRecord(), expectedVersion, AccessOption.PERSISTENT);
+    // If no remaining reasons, remove the maintenance signal
+    if (maintenanceSignal.getReasonsSerialized().isEmpty()) {
+      return _baseDataAccessor.removeWithExpectedVersion(PropertyPathBuilder.maintenance(_clusterName),
+          0, maintenanceSignal.getStat().getVersion());
+    }
+    // Else update the Znode with new data
+    return _baseDataAccessor.update(PropertyPathBuilder.maintenance(_clusterName), oldRecord -> {
+      return maintenanceSignal.getRecord();
+    }, AccessOption.PERSISTENT);
+
+    // return _baseDataAccessor.set(PropertyPathBuilder.maintenance(_clusterName),
+    //     maintenanceSignal.getRecord(), expectedVersion, AccessOption.PERSISTENT);
+
+
   }
 
   @Override

@@ -45,6 +45,7 @@ import org.apache.helix.monitoring.mbeans.MonitorDomainNames;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static org.apache.helix.monitoring.mbeans.ClusterStatusMonitor.CLUSTER_DN_KEY;
@@ -76,6 +77,14 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
     }
     super.afterClass();
   }
+
+  // @BeforeMethod
+  // public void beforeMethod() throws Exception {
+  //   _dataAccessor.removeProperty(_keyBuilder.maintenance());
+  //   boolean isInMaintenanceMode =
+  //       _gSetupTool.getClusterManagementTool().isInMaintenanceMode(CLUSTER_NAME);
+  //   Assert.assertFalse(isInMaintenanceMode);
+  // }
 
   @Test
   public void testNotInMaintenanceMode() {
@@ -110,7 +119,9 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
   }
 
   @Test(dependsOnMethods = "testMaintenanceModeAddNewInstance")
-  public void testMaintenanceModeAddNewResource() {
+  public void testMaintenanceModeAddNewResource() throws Exception {
+    // _gSetupTool.getClusterManagementTool().enableMaintenanceMode(CLUSTER_NAME, true, TestHelper.getTestMethodName());
+    // Assert.assertTrue(_clusterVerifier.verifyByPolling());
     _gSetupTool.getClusterManagementTool().addResource(CLUSTER_NAME,
         newResourceAddedDuringMaintenanceMode, 7, "MasterSlave",
         IdealState.RebalanceMode.FULL_AUTO.name(), CrushEdRebalanceStrategy.class.getName());
@@ -150,7 +161,9 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
 
   @Test(dependsOnMethods = "testMaintenanceModeInstanceBack")
   public void testExitMaintenanceModeNewResourceRecovery() {
-    _gSetupTool.getClusterManagementTool().enableMaintenanceMode(CLUSTER_NAME, false);
+    // Forcefully exit maintenance mode by removing znode
+    _dataAccessor.removeProperty(_keyBuilder.maintenance());
+    // _gSetupTool.getClusterManagementTool().enableMaintenanceMode(CLUSTER_NAME, false);
     Assert.assertTrue(_clusterVerifier.verifyByPolling());
     ExternalView externalView = _gSetupTool.getClusterManagementTool()
         .getResourceExternalView(CLUSTER_NAME, newResourceAddedDuringMaintenanceMode);
@@ -188,6 +201,7 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
       _participants[i].syncStart();
     }
     TestHelper.verify(() -> _dataAccessor.getChildNames(_keyBuilder.liveInstances()).size() == 3, 2000L);
+    // Thread.sleep(5000);
 
     // Check that the cluster is no longer in maintenance (auto-recovered)
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());

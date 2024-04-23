@@ -1139,12 +1139,22 @@ public class ZKHelixAdmin implements HelixAdmin {
     manuallyEnableMaintenanceMode(clusterName, enabled, reason, null);
   }
 
+  // @Override
+  // public void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
+  //     MaintenanceSignal.AutoTriggerReason internalReason) {
+  //   // Add AUTO_TRIGGER_REASON to customFields
+  //   Map<String, String> customFields = Collections.singletonMap(
+  //       MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason.name());
+  //   processMaintenanceMode(clusterName, enabled, reason, customFields,
+  //       MaintenanceSignal.TriggeringEntity.CONTROLLER);
+  // }
+
   @Override
   public void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
-      MaintenanceSignal.AutoTriggerReason internalReason) {
+      String internalReason) {
     // Add AUTO_TRIGGER_REASON to customFields
     Map<String, String> customFields = Collections.singletonMap(
-        MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason.name());
+        MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason);
     processMaintenanceMode(clusterName, enabled, reason, customFields,
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
   }
@@ -1182,7 +1192,6 @@ public class ZKHelixAdmin implements HelixAdmin {
       boolean maintenanceStateFlipped = false;
       if (!enabled) {
         // Exit maintenance mode
-
         // Return early if maintenanceSignal not present (cluster already exited maintenance)
         if (maintenanceSignal == null) {
           return;
@@ -1195,20 +1204,14 @@ public class ZKHelixAdmin implements HelixAdmin {
               String.format("Failed to remove reason %s from maintenanceSignal" + " for cluster %s",
                   reason, clusterName), e);
         }
+        success = accessor.updateMaintenanceSignal(maintenanceSignal,
+            maintenanceSignal.getStat().getVersion());
 
-        boolean fullyExitMaintenanceMode = maintenanceSignal.getReasonsSerialized().isEmpty();
-        if (fullyExitMaintenanceMode) {
-          // TODO: Delete expected version
-          success = accessor.removeProperty(accessor.keyBuilder().maintenance());
-          // success = accessor.getBaseDataAccessor().remove(accessor.keyBuilder().maintenance().getPath(), expectedVersion, AccessOption.PERSISTENT);
-          maintenanceStateFlipped = true;
-        } else {
-          success = accessor.updateMaintenanceSignal(maintenanceSignal,
-              maintenanceSignal.getStat().getVersion());
-        }
+        // Cluster has exited maintenance mode if there are no more reasons left
+        maintenanceStateFlipped = maintenanceSignal.getReasonsSerialized().isEmpty();
+
       } else {
         // Enter maintenance mode
-
         // Create new maintenanceSignal if no existing one
         if (maintenanceSignal == null) {
           maintenanceSignal = new MaintenanceSignal(MAINTENANCE_ZNODE_ID);
@@ -1228,14 +1231,14 @@ public class ZKHelixAdmin implements HelixAdmin {
       // Record maintenance history and break out early if write operation was successful
       if (success) {
         boolean inMaintenanceOnExit = enabled || !maintenanceStateFlipped;
-        //  enter = true
+        //  enter = true (aka enable maintenance)
           //  state flip = true --> in maintenance
           //  state flip = false --> in maintenance
-        //  enter = false (aka exit)
+        //  enter = false (aka exit maintenance)
           //  state flip = true --> not in maintenacnce
           //  state flip = false --> in maintenance
 
-        //     only not in mainteancne when flip = true on exit
+        // only not in maintenance when flip = true on exit
         recordMaintenanceHistory(clusterName, enabled, reason, customFields, triggeringEntity,
             currentTime, inMaintenanceOnExit);
         break;
