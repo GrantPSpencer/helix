@@ -20,9 +20,11 @@ package org.apache.helix.model;
  */
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -52,7 +54,7 @@ public class MaintenanceSignal extends HelixProperty {
     public AutoTriggerReason getAutoTriggerReason() {
       try {
         return AutoTriggerReason
-            .valueOf(_map.get(MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name()));
+            .valueOf(_map.get(MaintenanceSignalProperty.REASON.name()));
       } catch (Exception e) {
         return AutoTriggerReason.NOT_APPLICABLE;
       }
@@ -144,7 +146,9 @@ public class MaintenanceSignal extends HelixProperty {
   }
 
   public List<String> getReasonsSerialized() {
-    return _record.getListField(MaintenanceSignalProperty.REASONS.name());
+    return _record.getListField(MaintenanceSignalProperty.REASONS.name()) == null ? new ArrayList<>()
+        : _record.getListField(MaintenanceSignalProperty.REASONS.name());
+    // return _record.getListField(MaintenanceSignalProperty.REASONS.name());
   }
 
   public List<Signal> getReasons() {
@@ -166,13 +170,14 @@ public class MaintenanceSignal extends HelixProperty {
     // add maintenanceReason object to simpleFields
     // attempt to write to ZK with expected version.... how many retries? (this logic should be done outside)
 
-
     checkAndStoreSimpleFieldReason();
 
     // Add new reason to both simpleField and ListField
     writeMaintenanceReasonToSimpleFields(reason, timestamp, triggeringEntity, customFields);
-    getReasonsSerialized().add(_objectMapper.writeValueAsString(createMaintenanceReasonObject(
-        reason, timestamp, triggeringEntity, customFields).toString()));
+    List<String> serializedReasons = getReasonsSerialized();
+    serializedReasons.add(_objectMapper.writeValueAsString(createMaintenanceReasonObject(
+        reason, timestamp, triggeringEntity, customFields)));
+    _record.setListField(MaintenanceSignalProperty.REASONS.name(), serializedReasons);
   }
 
   public void removeMaintenanceReason(String reason) throws IOException {
@@ -195,7 +200,7 @@ public class MaintenanceSignal extends HelixProperty {
     int matchedMaintenanceReasonIndex = -1;
     for (int i = 0; i < maintenanceReasons.size(); i++) {
       String currMaintenanceReason = maintenanceReasons.get(i).getReason();
-      if (reason.equals(currMaintenanceReason)) {
+      if (Objects.equals(reason, currMaintenanceReason)) {
         matchedMaintenanceReasonIndex = i;
         break;
       }
@@ -206,18 +211,17 @@ public class MaintenanceSignal extends HelixProperty {
           String.format("Attempted to remove maintenance reason %s did not exist", reason));
     }
 
+    // List<String> serializedReasons = getReasonsSerialized();
     getReasonsSerialized().remove(matchedMaintenanceReasonIndex);
-
     checkAndStoreSimpleFieldReason();
   }
 
   private void checkAndStoreSimpleFieldReason() throws IOException {
-    List<String> maintenanceReasons = getReasonsSerialized();
+    List<Signal> maintenanceReasons = getReasons();
     // Backwards compatibility check, as old clients do not write maintenance reason to listField
     // Most recent won't be in list if it's from old client, need to add to the list before adding new reason
-    if (!maintenanceReasons.isEmpty() &&
-        !maintenanceReasons.get(maintenanceReasons.size()-1).equals(
-            _record.getSimpleField(MaintenanceSignalProperty.REASON.name()))) {
+    if (!maintenanceReasons.isEmpty() && !Objects.equals(maintenanceReasons.get(maintenanceReasons
+        .size()-1).getReason(), _record.getSimpleField(MaintenanceSignalProperty.REASON.name()))) {
       // Try to write maintenance object currently in simpleFields to listFields
       getReasonsSerialized().add(_objectMapper.
           writeValueAsString(_record.getSimpleFields()));
@@ -230,7 +234,10 @@ public class MaintenanceSignal extends HelixProperty {
     _record.setSimpleField(MaintenanceSignalProperty.REASON.name(), reason);
     _record.setLongField(MaintenanceSignalProperty.TIMESTAMP.name(), timestamp);
     _record.setSimpleField(MaintenanceSignalProperty.TRIGGERED_BY.name(), triggeringEntity.name());
-    customFields.forEach(_record.getSimpleFields()::putIfAbsent);
+    if (customFields != null) {
+      customFields.forEach(_record.getSimpleFields()::putIfAbsent);
+    }
+
   }
 
   private Map<String, String> createMaintenanceReasonObject(String reason, Long timestamp,
@@ -239,7 +246,10 @@ public class MaintenanceSignal extends HelixProperty {
     maintenanceReason.put(MaintenanceSignalProperty.REASON.name(), reason);
     maintenanceReason.put(MaintenanceSignalProperty.TIMESTAMP.name(), Long.toString(timestamp));
     maintenanceReason.put(MaintenanceSignalProperty.TRIGGERED_BY.name(), triggeringEntity.name());
-    customFields.forEach(maintenanceReason::putIfAbsent);
+    if (customFields != null) {
+      customFields.forEach(maintenanceReason::putIfAbsent);
+    }
+
 
     return maintenanceReason;
   }

@@ -339,7 +339,7 @@ public class MockHelixAdmin implements HelixAdmin {
 
   @Override
   public void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
-      MaintenanceSignal.AutoTriggerReason internalReason) {
+      String internalReason) {
 
   }
 
