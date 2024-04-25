@@ -1090,22 +1090,12 @@ public class ZKHelixAdmin implements HelixAdmin {
     manuallyEnableMaintenanceMode(clusterName, enabled, reason, null);
   }
 
-  // @Override
-  // public void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
-  //     MaintenanceSignal.AutoTriggerReason internalReason) {
-  //   // Add AUTO_TRIGGER_REASON to customFields
-  //   Map<String, String> customFields = Collections.singletonMap(
-  //       MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason.name());
-  //   processMaintenanceMode(clusterName, enabled, reason, customFields,
-  //       MaintenanceSignal.TriggeringEntity.CONTROLLER);
-  // }
-
   @Override
   public void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
-      String internalReason) {
+      MaintenanceSignal.AutoTriggerReason internalReason) {
     // Add AUTO_TRIGGER_REASON to customFields
     Map<String, String> customFields = Collections.singletonMap(
-        MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason);
+        MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name(), internalReason.name());
     processMaintenanceMode(clusterName, enabled, reason, customFields,
         MaintenanceSignal.TriggeringEntity.CONTROLLER);
   }
@@ -1115,6 +1105,19 @@ public class ZKHelixAdmin implements HelixAdmin {
       Map<String, String> customFields) {
     processMaintenanceMode(clusterName, enabled, reason, customFields,
         MaintenanceSignal.TriggeringEntity.USER);
+  }
+
+  @Override
+  public void forcefullyExitMaintenanceMode(String clusterName, String reason,
+      Map<String, String> customFields) {
+    // TODO: specify triggering entity
+    // add logs
+    // Add record mainteancne history, record each reason that was popped
+    HelixDataAccessor accessor =
+        new ZKHelixDataAccessor(clusterName, new ZkBaseDataAccessor<ZNRecord>(_zkClient));
+    PropertyKey.Builder keyBuilder = accessor.keyBuilder();
+    // Exit maintenance mode
+    accessor.removeProperty(keyBuilder.maintenance());
   }
 
   /**
@@ -1149,7 +1152,7 @@ public class ZKHelixAdmin implements HelixAdmin {
         }
 
         try {
-          maintenanceSignal.removeMaintenanceReason(reason);
+          maintenanceSignal.removeMaintenanceReason(reason, triggeringEntity, customFields);
         } catch (Exception e) {
           throw new HelixException(
               String.format("Failed to remove reason %s from maintenanceSignal" + " for cluster %s",

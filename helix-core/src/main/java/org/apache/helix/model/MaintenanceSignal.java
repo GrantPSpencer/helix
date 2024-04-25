@@ -54,7 +54,7 @@ public class MaintenanceSignal extends HelixProperty {
     public AutoTriggerReason getAutoTriggerReason() {
       try {
         return AutoTriggerReason
-            .valueOf(_map.get(MaintenanceSignalProperty.REASON.name()));
+            .valueOf(_map.get(MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name()));
       } catch (Exception e) {
         return AutoTriggerReason.NOT_APPLICABLE;
       }
@@ -180,7 +180,7 @@ public class MaintenanceSignal extends HelixProperty {
     _record.setListField(MaintenanceSignalProperty.REASONS.name(), serializedReasons);
   }
 
-  public void removeMaintenanceReason(String reason) throws IOException {
+  public void removeMaintenanceReason(String reason, TriggeringEntity triggeringEntity, Map<String, String> customFields) throws IOException {
     // Find the reason in listField that matches (does order matter?)
     // If there is no matched object, then throw an error
     // If it is at the end of the list, check if the object's reason == the simpleField reason
@@ -198,13 +198,29 @@ public class MaintenanceSignal extends HelixProperty {
 
     // TODO: change back to foreach
     int matchedMaintenanceReasonIndex = -1;
-    for (int i = 0; i < maintenanceReasons.size(); i++) {
-      String currMaintenanceReason = maintenanceReasons.get(i).getReason();
-      if (Objects.equals(reason, currMaintenanceReason)) {
-        matchedMaintenanceReasonIndex = i;
-        break;
+    // If triggered by controller, search by AutoTriggerReason
+    if (triggeringEntity == MaintenanceSignal.TriggeringEntity.CONTROLLER && customFields != null
+        && customFields.containsKey(MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name())) {
+      AutoTriggerReason autoTriggerReason = AutoTriggerReason.valueOf(customFields.get(
+          MaintenanceSignal.MaintenanceSignalProperty.AUTO_TRIGGER_REASON.name()));
+      for (int i = 0; i < maintenanceReasons.size(); i++) {
+        AutoTriggerReason currAutoTriggerReason = maintenanceReasons.get(i).getAutoTriggerReason();
+        if (Objects.equals(autoTriggerReason, currAutoTriggerReason)) {
+          matchedMaintenanceReasonIndex = i;
+          break;
+        }
+      }
+    } else {
+      // Else search by reason
+      for (int i = 0; i < maintenanceReasons.size(); i++) {
+        String currMaintenanceReason = maintenanceReasons.get(i).getReason();
+        if (Objects.equals(reason, currMaintenanceReason)) {
+          matchedMaintenanceReasonIndex = i;
+          break;
+        }
       }
     }
+
 
     if (matchedMaintenanceReasonIndex == -1) {
       throw new HelixException(

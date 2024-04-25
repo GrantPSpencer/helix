@@ -201,7 +201,7 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
       _participants[i].syncStart();
     }
     TestHelper.verify(() -> _dataAccessor.getChildNames(_keyBuilder.liveInstances()).size() == 3, 2000L);
-    // Thread.sleep(5000);
+    Thread.sleep(5000);
 
     // Check that the cluster is no longer in maintenance (auto-recovered)
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
@@ -240,8 +240,8 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
   @Test(dependsOnMethods = "testNoAutoExitWhenManuallyPutInMaintenance")
   public void testManualEnablingOverridesAutoEnabling() throws Exception {
     // Exit maintenance mode manually
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, null,
-        null);
+    _gSetupTool.getClusterManagementTool().forcefullyExitMaintenanceMode(CLUSTER_NAME,
+        "forcefully exited", null);
 
     // Kill 3 instances, which would put cluster in maintenance automatically
     for (int i = 0; i < 3; i++) {
@@ -264,11 +264,11 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
         customFields);
     TestHelper.verify(() -> _dataAccessor.getProperty(_keyBuilder.maintenance()) != null, 2000L);
 
-    // Check that maintenance mode has successfully overwritten with the right TRIGGERED_BY field
+    // Check that most recent maintenance mode was triggered by user
     maintenanceSignal = _dataAccessor.getProperty(_keyBuilder.maintenance());
     signals = maintenanceSignal.getReasons();
-    Assert.assertTrue(signals.size() == 1);
-    signal = signals.get(0);
+    Assert.assertTrue(signals.size() > 0);
+    signal = signals.get(signals.size()-1);
     Assert.assertEquals(signal.getTriggeringEntity(),
         MaintenanceSignal.TriggeringEntity.USER);
     for (Map.Entry<String, String> entry : customFields.entrySet()) {
@@ -291,8 +291,8 @@ public class TestClusterMaintenanceMode extends TaskTestBase {
   @Test(dependsOnMethods = "testManualEnablingOverridesAutoEnabling")
   public void testMaxPartitionLimit() throws Exception {
     // Manually exit maintenance mode
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, null,
-        null);
+    _gSetupTool.getClusterManagementTool().forcefullyExitMaintenanceMode(CLUSTER_NAME,
+        "force exit for " + TestHelper.getTestMethodName(), null);
     TestHelper.verify(() -> _dataAccessor.getProperty(_keyBuilder.maintenance()) != null, 2000L);
 
 
