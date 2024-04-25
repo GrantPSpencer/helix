@@ -124,7 +124,7 @@ public class MaintenanceRecoveryStage extends AbstractAsyncBaseStage {
       // The cluster has recovered sufficiently, so proceed to exit the maintenance mode by removing
       // MaintenanceSignal. AutoTriggerReason won't be recorded
       manager.getClusterManagmentTool().autoEnableMaintenanceMode(manager.getClusterName(), false,
-          internalReason.name(), reason);
+          reason, internalReason);
       // TODO: this should be dependent on return of autoEnableMaintenanceMode
       cache.setMaintenanceSignalChanged(); // Set the flag so we do not double enable/disable
       LogUtil.logInfo(LOG, _eventId, reason);

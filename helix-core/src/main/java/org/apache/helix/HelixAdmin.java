@@ -374,7 +374,7 @@ public interface HelixAdmin {
    * @param internalReason
    */
   void autoEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
-      String internalReason);
+      MaintenanceSignal.AutoTriggerReason internalReason);
 
   /**
    * Manually enable maintenance mode. To be called by the REST client that accepts KV mappings as
@@ -385,6 +385,13 @@ public interface HelixAdmin {
    * @param customFields user-specified KV mappings to be stored in the ZNode
    */
   void manuallyEnableMaintenanceMode(String clusterName, boolean enabled, String reason,
+      Map<String, String> customFields);
+
+  /**
+   * Forcefully and immediately exits maintenance mode, disregarding any reasons the cluster may be
+   * in maintenance mode for. To be called by the REST client.
+  */
+  void forcefullyExitMaintenanceMode(String clusterName, String reason,
       Map<String, String> customFields);
 
   /**

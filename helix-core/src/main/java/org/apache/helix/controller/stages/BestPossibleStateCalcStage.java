@@ -340,8 +340,8 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
           if (manager.getHelixDataAccessor()
               .getProperty(manager.getHelixDataAccessor().keyBuilder().maintenance()) == null) {
             manager.getClusterManagmentTool()
-                .autoEnableMaintenanceMode(manager.getClusterName(), true,
-                    MaintenanceSignal.AutoTriggerReason.MAX_OFFLINE_INSTANCES_EXCEEDED.name(), errMsg);
+                .autoEnableMaintenanceMode(manager.getClusterName(), true, errMsg,
+                    MaintenanceSignal.AutoTriggerReason.MAX_OFFLINE_INSTANCES_EXCEEDED);
             LogUtil.logWarn(logger, _eventId, errMsg);
           }
         } else {
