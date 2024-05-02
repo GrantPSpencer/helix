@@ -1159,14 +1159,29 @@ public class ZKHelixAdmin implements HelixAdmin {
   @Override
   public void forcefullyExitMaintenanceMode(String clusterName, String reason,
       Map<String, String> customFields) {
-    // TODO: specify triggering entity
-    // add logs
-    // Add record mainteancne history, record each reason that was popped
+    logger.info("Cluster {} forcefully exiting maintenance for force exit reason: {}.",
+        clusterName, reason);
+    final long currentTime = System.currentTimeMillis();
     HelixDataAccessor accessor =
         new ZKHelixDataAccessor(clusterName, new ZkBaseDataAccessor<ZNRecord>(_zkClient));
     PropertyKey.Builder keyBuilder = accessor.keyBuilder();
-    // Exit maintenance mode
+    MaintenanceSignal maintenanceSignal = accessor.getProperty(keyBuilder.maintenance());
+
+    if (maintenanceSignal == null) {
+      return;
+    }
+
+    if (customFields == null) {
+      customFields = new HashMap<>();
+    }
+
     accessor.removeProperty(keyBuilder.maintenance());
+    customFields.put("FORCE_EXIT_REASON", reason);
+    String reasonPrefix = "Forcefully exited maintenance mode reason - ";
+    for (MaintenanceSignal.Signal signal : maintenanceSignal.getReasons()) {
+      recordMaintenanceHistory(clusterName, false, reasonPrefix + signal.getReason(), customFields,
+          MaintenanceSignal.TriggeringEntity.USER, currentTime, false);
+    }
   }
 
   /**
