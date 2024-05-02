@@ -102,18 +102,6 @@ public class MockBaseDataAccessor implements BaseDataAccessor<ZNRecord> {
 
   @Override
   public boolean remove(String path, int options) {
-    return remove(path, options, -1);
-  }
-
-  @Override
-  public boolean remove(String path, int options, int expectedVersion) {
-    if (expectedVersion != -1) {
-      ZNode node = _recordMap.get(path);
-      if (node != null && node.getStat().getVersion() != expectedVersion) {
-        return false;
-      }
-    }
-
     _recordMap.remove(path);
     try {
       Thread.sleep(50);

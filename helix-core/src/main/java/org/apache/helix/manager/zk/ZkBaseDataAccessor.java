@@ -770,24 +770,11 @@ public class ZkBaseDataAccessor<T> implements BaseDataAccessor<T> {
    */
   @Override
   public boolean remove(String path, int options) {
-    return remove(path, options, -1);
-  }
-
-  /**
-   * Sync remove with expected version. It tries to remove the ZNode if the ZNode's version matches
-   * the provided expectedVersion and all its descendants if any. Node does not exist is regarded as
-   * success.
-   */
-  @Override
-  public boolean remove(String path, int options, int expectedVersion) {
     try {
       // operation will not throw exception when path successfully deleted or does not exist
       // despite real error, operation will throw exception when path not empty, and in this
       // case, we try to delete recursively
-      _zkClient.delete(path, expectedVersion);
-    } catch (ZkBadVersionException e) {
-      LOG.error("Failed to delete {} recursively, znode version mismatch!", path, e);
-      return false;
+      _zkClient.delete(path);
     } catch (ZkException e) {
       LOG.debug("Failed to delete {} with opts {}, err: {}. Try recursive delete", path, options,
           e.getMessage());

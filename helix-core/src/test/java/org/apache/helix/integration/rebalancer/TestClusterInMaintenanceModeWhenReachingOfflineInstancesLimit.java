@@ -166,7 +166,6 @@ public class TestClusterInMaintenanceModeWhenReachingOfflineInstancesLimit exten
       instance = _participants.get(i).getInstanceName();
       admin.enableInstance(CLUSTER_NAME, instance, true);
     }
-    // TODO: gspencer figure this test out
     admin.forcefullyExitMaintenanceMode(CLUSTER_NAME,
         "forcefully exiting MM for " + TestHelper.getTestMethodName(), null);
 

@@ -122,7 +122,6 @@ public class ZKHelixDataAccessor implements HelixDataAccessor {
 
   @Override
   public boolean createMaintenance(MaintenanceSignal maintenanceSignal) {
-    // TODO: Change to expect version
     return updateMaintenanceSignal(maintenanceSignal, -1);
   }
 
@@ -137,11 +136,6 @@ public class ZKHelixDataAccessor implements HelixDataAccessor {
     return _baseDataAccessor.update(PropertyPathBuilder.maintenance(_clusterName), oldRecord -> {
       return maintenanceSignal.getRecord();
     }, AccessOption.PERSISTENT);
-
-    // return _baseDataAccessor.set(PropertyPathBuilder.maintenance(_clusterName),
-    //     maintenanceSignal.getRecord(), expectedVersion, AccessOption.PERSISTENT);
-
-
   }
 
   @Override
