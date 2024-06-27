@@ -558,11 +558,22 @@ public class IdealState extends HelixProperty {
    * @return number of replicas (as a string)
    */
   public String getReplicas() {
-    // HACK: if replica doesn't exists, use the length of the first list field
+    // HACK: if replica doesn't exists or is ANY_LIVEINSTANCE, use the length of the first list field
     // instead
     // TODO: remove it when Dbus fixed the IdealState writer
     // TODO: replica could be "ANY_INSTANCE".
     String replica = _record.getSimpleField(IdealStateProperty.REPLICAS.toString());
+    if (replica.equalsIgnoreCase(ResourceConfig.ResourceConfigConstants.ANY_LIVEINSTANCE.name())) {
+      if (_record.getListFields().size() == 0) {
+        replica = "0";
+      } else {
+        String firstPartition = new ArrayList<String>(_record.getListFields().keySet()).get(0);
+        replica =
+            Integer.toString(firstPartition == null ? 0 : _record.getListField(firstPartition)
+                .size());
+      }
+    }
+
     if (replica == null) {
       String firstPartition = null;
       switch (getRebalanceMode()) {
