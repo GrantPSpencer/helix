@@ -560,7 +560,7 @@ public class TestPerInstanceAccessor extends AbstractTestClass {
       idealState.setRebalanceMode(IdealState.RebalanceMode.SEMI_AUTO);
       idealState.setDelayRebalanceEnabled(false);
       idealState.setRebalanceDelay(0);
-      _gSetupTool.getClusterManagementTool().setResourceIdealState(CLUSTER_NAME, resource, idealState);
+      _gSetupTool.getClusterManagementTool().updateIdealState(CLUSTER_NAME, resource, idealState);
     }
 
     // Exit MM
