@@ -1080,8 +1080,9 @@ public class BaseControllerDataProvider implements ControlContextProvider {
     _disabledInstanceSet.clear();
     for (InstanceConfig config : allInstanceConfigs) {
       Map<String, List<String>> disabledPartitionMap = config.getDisabledPartitionsMap();
-      if (config.getInstanceOperation().getOperation()
-          .equals(InstanceConstants.InstanceOperation.DISABLE)) {
+      // Treat instance as disabled if it has "DISABLE" operation or "ALL_RESOURCES" in the disabled partition map
+      if (config.getInstanceOperation().getOperation().equals(InstanceConstants.InstanceOperation.DISABLE) ||
+          disabledPartitionMap.containsKey(InstanceConstants.ALL_RESOURCES_DISABLED_PARTITION_KEY)) {
         _disabledInstanceSet.add(config.getInstanceName());
       }
       for (String resource : disabledPartitionMap.keySet()) {

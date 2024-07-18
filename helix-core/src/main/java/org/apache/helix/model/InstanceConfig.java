@@ -680,8 +680,6 @@ public class InstanceConfig extends HelixProperty {
         getInstanceOperation().getOperation());
   }
 
-  // gspencer TODO:
-
   /**
   * Check if this instance is enabled for a given partition
   * This API is deprecated, and will be removed in next major release.
