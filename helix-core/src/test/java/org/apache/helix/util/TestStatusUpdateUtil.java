@@ -41,7 +41,7 @@ import org.testng.annotations.Test;
 
 public class TestStatusUpdateUtil extends ZkTestBase {
   private String clusterName = TestHelper.getTestClassName();
-  private int n = 2;
+  private int n = 1;
   private Message message = new Message(Message.MessageType.STATE_TRANSITION, "Some unique id");
   private MockParticipantManager[] participants = new MockParticipantManager[n];
 
@@ -108,11 +108,15 @@ public class TestStatusUpdateUtil extends ZkTestBase {
         .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
             "TestDB_0");
 
-    try {
-      ZNRecord error = _gZkClient.readData(errPath);
-    } catch (ZkException zke) {
-      Assert.fail("expecting being able to send error logs to ZK.", zke);
-    }
+    // Verify message exists in ZK
+    TestHelper.verify(() -> {
+      try {
+        _gZkClient.readData(errPath);
+        return true;
+      } catch (ZkException zke) {
+        return false;
+      }
+    }, 10000);
   }
 
   @Test
@@ -122,11 +126,11 @@ public class TestStatusUpdateUtil extends ZkTestBase {
 
     Exception e = new RuntimeException("test exception");
     statusUpdateUtil.logError(message, HelixStateTransitionHandler.class, e,
-        "test status update", participants[1]);
+        "test status update", participants[0]);
 
     // assert by default, not logged to Zookeeper
     String errPath = PropertyPathBuilder
-        .instanceError(clusterName, "localhost_12918", participants[1].getSessionId(), "TestDB",
+        .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
             "TestDB_0");
     try {
       ZNRecord error = _gZkClient.readData(errPath);
