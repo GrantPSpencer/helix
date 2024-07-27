@@ -41,7 +41,7 @@ import org.testng.annotations.Test;
 
 public class TestStatusUpdateUtil extends ZkTestBase {
   private String clusterName = TestHelper.getTestClassName();
-  private int n = 1;
+  private int n = 2;
   private Message message = new Message(Message.MessageType.STATE_TRANSITION, "Some unique id");
   private MockParticipantManager[] participants = new MockParticipantManager[n];
 
@@ -122,11 +122,11 @@ public class TestStatusUpdateUtil extends ZkTestBase {
 
     Exception e = new RuntimeException("test exception");
     statusUpdateUtil.logError(message, HelixStateTransitionHandler.class, e,
-        "test status update", participants[0]);
+        "test status update", participants[1]);
 
     // assert by default, not logged to Zookeeper
     String errPath = PropertyPathBuilder
-        .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
+        .instanceError(clusterName, "localhost_12918", participants[1].getSessionId(), "TestDB",
             "TestDB_0");
     try {
       ZNRecord error = _gZkClient.readData(errPath);
