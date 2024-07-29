@@ -97,6 +97,7 @@ public class TestStatusUpdateUtil extends ZkTestBase {
 
   @Test(dependsOnMethods = "testDisableErrorLogByDefault")
   public void testEnableErrorLog() throws Exception {
+    System.setProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED, "true");
     StatusUpdateUtil statusUpdateUtil = new StatusUpdateUtil();
     setFinalStatic(StatusUpdateUtil.class.getField("ERROR_LOG_TO_ZK_ENABLED"), true);
 
@@ -108,15 +109,21 @@ public class TestStatusUpdateUtil extends ZkTestBase {
         .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
             "TestDB_0");
 
+    boolean exists = _gZkClient.exists(errPath);
+    System.out.println("Exists: " + exists);
+
     try {
       ZNRecord error = _gZkClient.readData(errPath);
+      System.out.println("Error node is: " + error);
     } catch (ZkException zke) {
       Assert.fail("expecting being able to send error logs to ZK.", zke);
     }
+    System.clearProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED);
   }
 
   @Test
   public void testDisableErrorLogByDefault() throws Exception {
+    System.setProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED, "false");
     StatusUpdateUtil statusUpdateUtil = new StatusUpdateUtil();
     setFinalStatic(StatusUpdateUtil.class.getField("ERROR_LOG_TO_ZK_ENABLED"), false);
 
@@ -128,11 +135,17 @@ public class TestStatusUpdateUtil extends ZkTestBase {
     String errPath = PropertyPathBuilder
         .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
             "TestDB_0");
+
+    boolean exists = _gZkClient.exists(errPath);
+    System.out.println("Exists: " + exists);
+
     try {
       ZNRecord error = _gZkClient.readData(errPath);
+      System.out.println("Error node is: " + error);
       Assert.fail("not expecting being able to send error logs to ZK by default.");
     } catch (ZkException zke) {
       // expected
     }
+    System.clearProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED);
   }
 }
