@@ -119,6 +119,14 @@ public class TestStatusUpdateUtil extends ZkTestBase {
 
   @Test
   public void testDisableErrorLogByDefault() throws Exception {
+    String errPath = PropertyPathBuilder
+        .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
+            "TestDB_0");
+
+    if (_gZkClient.exists(errPath)) {
+      _gZkClient.delete(errPath);
+    }
+
     StatusUpdateUtil statusUpdateUtil = new StatusUpdateUtil();
     setFinalStatic(StatusUpdateUtil.class.getField("ERROR_LOG_TO_ZK_ENABLED"), false);
 
@@ -127,9 +135,6 @@ public class TestStatusUpdateUtil extends ZkTestBase {
         "test status update", participants[0]);
 
     // assert by default, not logged to Zookeeper
-    String errPath = PropertyPathBuilder
-        .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
-            "TestDB_0");
     try {
       ZNRecord error = _gZkClient.readData(errPath);
       Assert.fail("not expecting being able to send error logs to ZK by default.");
