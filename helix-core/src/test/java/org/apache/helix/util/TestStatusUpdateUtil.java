@@ -97,13 +97,15 @@ public class TestStatusUpdateUtil extends ZkTestBase {
 
   @Test(dependsOnMethods = "testDisableErrorLogByDefault")
   public void testEnableErrorLog() throws Exception {
-    System.setProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED, "true");
     StatusUpdateUtil statusUpdateUtil = new StatusUpdateUtil();
     setFinalStatic(StatusUpdateUtil.class.getField("ERROR_LOG_TO_ZK_ENABLED"), true);
 
     Exception e = new RuntimeException("test exception");
     statusUpdateUtil.logError(message, HelixStateTransitionHandler.class, e,
         "test status update", participants[0]);
+
+    System.out.println("ERROR_LOG_TO_ZK_ENABLED in testDisableErrorLogByDefault is: " + StatusUpdateUtil.ERROR_LOG_TO_ZK_ENABLED);
+
     // logged to Zookeeper
     String errPath = PropertyPathBuilder
         .instanceError(clusterName, "localhost_12918", participants[0].getSessionId(), "TestDB",
@@ -118,18 +120,18 @@ public class TestStatusUpdateUtil extends ZkTestBase {
     } catch (ZkException zke) {
       Assert.fail("expecting being able to send error logs to ZK.", zke);
     }
-    System.clearProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED);
   }
 
   @Test
   public void testDisableErrorLogByDefault() throws Exception {
-    System.setProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED, "false");
     StatusUpdateUtil statusUpdateUtil = new StatusUpdateUtil();
     setFinalStatic(StatusUpdateUtil.class.getField("ERROR_LOG_TO_ZK_ENABLED"), false);
 
     Exception e = new RuntimeException("test exception");
     statusUpdateUtil.logError(message, HelixStateTransitionHandler.class, e,
         "test status update", participants[0]);
+
+    System.out.println("ERROR_LOG_TO_ZK_ENABLED in testDisableErrorLogByDefault is: " + StatusUpdateUtil.ERROR_LOG_TO_ZK_ENABLED);
 
     // assert by default, not logged to Zookeeper
     String errPath = PropertyPathBuilder
@@ -146,6 +148,5 @@ public class TestStatusUpdateUtil extends ZkTestBase {
     } catch (ZkException zke) {
       // expected
     }
-    System.clearProperty(SystemPropertyKeys.STATEUPDATEUTIL_ERROR_PERSISTENCY_ENABLED);
   }
 }
