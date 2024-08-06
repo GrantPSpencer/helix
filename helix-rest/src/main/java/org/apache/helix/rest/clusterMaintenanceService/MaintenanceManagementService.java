@@ -472,9 +472,11 @@ public class MaintenanceManagementService {
   private List<String> batchHelixInstanceStoppableCheck(String clusterId,
       Collection<String> instances, Map<String, StoppableCheck> finalStoppableChecks,
       Set<String> toBeStoppedInstances) {
+    Set<String> sameZoneNodes = new HashSet<>(instances);
+    sameZoneNodes.addAll(toBeStoppedInstances);
     Map<String, Future<StoppableCheck>> helixInstanceChecks = instances.stream().collect(
         Collectors.toMap(Function.identity(), instance -> POOL.submit(
-            () -> performHelixOwnInstanceCheck(clusterId, instance, toBeStoppedInstances))));
+            () -> performHelixOwnInstanceCheck(clusterId, instance, sameZoneNodes))));
     // finalStoppableChecks contains instances that does not pass this health check
     return filterInstancesForNextCheck(helixInstanceChecks, finalStoppableChecks);
   }
