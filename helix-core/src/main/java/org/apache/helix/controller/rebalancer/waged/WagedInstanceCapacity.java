@@ -203,6 +203,13 @@ public class WagedInstanceCapacity implements InstanceCapacityDataProvider {
 
     Map<String, Integer> instanceCapacity = _instanceCapacityMap.get(instance);
     Map<String, Integer> processedCapacity = new HashMap<>();
+
+    // Previously seen NPE when calling instanceCapacity.keySet(). This is a log to help debug future occurrences.
+    if (instanceCapacity == null) {
+      LOG.error("Instance: " + instance + " has no capacity configured. Instances in map are: "
+          + _instanceCapacityMap.keySet());
+    }
+
     for (String key : instanceCapacity.keySet()) {
       if (partitionCapacity.containsKey(key)) {
         int partCapacity = partitionCapacity.get(key);
