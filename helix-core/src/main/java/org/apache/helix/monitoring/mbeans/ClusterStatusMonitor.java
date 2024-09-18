@@ -591,15 +591,25 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
     }
   }
 
+  @Deprecated
   public void updateRebalancerStats(String resourceName, long numPendingRecoveryRebalancePartitions,
       long numPendingLoadRebalancePartitions, long numRecoveryRebalanceThrottledPartitions,
       long numLoadRebalanceThrottledPartitions, boolean rebalanceThrottledByErrorPartitions) {
+      updateRebalancerStats(resourceName, numPendingRecoveryRebalancePartitions,
+          numPendingLoadRebalancePartitions, numRecoveryRebalanceThrottledPartitions,
+          numLoadRebalanceThrottledPartitions, rebalanceThrottledByErrorPartitions, -1);
+  }
+
+  public void updateRebalancerStats(String resourceName, long numPendingRecoveryRebalancePartitions,
+      long numPendingLoadRebalancePartitions, long numRecoveryRebalanceThrottledPartitions,
+      long numLoadRebalanceThrottledPartitions, boolean rebalanceThrottledByErrorPartitions,
+      long numMessagesForTransitToInitialState) {
     ResourceMonitor resourceMonitor = getOrCreateResourceMonitor(resourceName);
 
     if (resourceMonitor != null) {
       resourceMonitor.updateRebalancerStats(numPendingRecoveryRebalancePartitions,
           numPendingLoadRebalancePartitions, numRecoveryRebalanceThrottledPartitions,
-          numLoadRebalanceThrottledPartitions, rebalanceThrottledByErrorPartitions);
+          numLoadRebalanceThrottledPartitions, rebalanceThrottledByErrorPartitions, numMessagesForTransitToInitialState);
     }
   }
 

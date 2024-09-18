@@ -120,6 +120,7 @@ public class TopStateHandoffReportStage extends AbstractAsyncBaseStage {
               lastTopStateInstance, currentTopStateInstance, clusterStatusMonitor,
               durationThreshold, lastPipelineFinishTimestamp);
           updateCachedTopStateLocation(cache, resourceName, partition, currentTopStateInstance);
+          // gspencer TOOD: report current state locations
         } else {
           reportTopStateMissing(cache, resourceName,
               partition, stateModelDef.getTopState(), currentStateOutput);
