@@ -321,7 +321,6 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
     Set<String> messagesForLoad = new HashSet<>();
     Set<String> messagesThrottledForRecovery = new HashSet<>();
     Set<String> messagesThrottledForLoad = new HashSet<>();
-    Set<String> messagesForTransitToInitialState = new HashSet<>();
     ClusterConfig clusterConfig = cache.getClusterConfig();
 
     // If the threshold (ErrorOrRecovery) is set, then use it, if not, then check if the old
@@ -377,10 +376,6 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
         RebalanceType rebalanceType =
             getRebalanceTypePerMessage(requiredState, message, derivedCurrentStateMap);
 
-        if (stateModelDef.getInitialState().equals(message.getToState())) {
-          messagesForTransitToInitialState.add(message.getId());
-        }
-
         // Number of states required by StateModelDefinition are not satisfied, need recovery
         if (rebalanceType.equals(RebalanceType.RECOVERY_BALANCE)) {
           message.setSTRebalanceType(Message.STRebalanceType.RECOVERY_REBALANCE);
@@ -423,12 +418,10 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
     }
 
     if (clusterStatusMonitor != null) {
-      messagesForTransitToInitialState.removeAll(messagesThrottledForRecovery);
-      messagesForTransitToInitialState.removeAll(messagesThrottledForLoad);
       clusterStatusMonitor
           .updateRebalancerStats(resourceName, messagesForRecovery.size(), messagesForLoad.size(),
               messagesThrottledForRecovery.size(), messagesThrottledForLoad.size(),
-              onlyDownwardLoadBalance, messagesForTransitToInitialState.size());
+              onlyDownwardLoadBalance);
     }
 
     if (logger.isDebugEnabled()) {

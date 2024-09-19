@@ -53,6 +53,7 @@ public class TestInstanceMonitor {
     Assert.assertEquals(monitor.getOnline(), 0L);
     Assert.assertEquals(monitor.getEnabled(), 0L);
     Assert.assertEquals(monitor.getTotalMessageReceived(), 0L);
+    Assert.assertEquals(monitor.getTotalMessagesForTransitToInitialStateReceivedCounter(), 0L);
     Assert.assertEquals(monitor.getDisabledPartitions(), 0L);
     Assert.assertEquals(monitor.getAllPartitionsDisabled(), 0L);
     Assert.assertEquals(monitor.getMaxCapacityUsageGauge(), 0.0d);
@@ -60,12 +61,14 @@ public class TestInstanceMonitor {
     // Update metrics.
     monitor.updateMaxCapacityUsage(0.5d);
     monitor.increaseMessageCount(10L);
+    monitor.increaseTotalMessagesForTransitToInitialStateReceivedCounter(10L);
     monitor.updateInstance(tags, disabledPartitions, Collections.emptyList(), true, true);
     monitor.updateMessageQueueSize(100L);
     monitor.updatePastDueMessageGauge(50L);
 
     // Verify metrics.
     Assert.assertEquals(monitor.getTotalMessageReceived(), 10L);
+    Assert.assertEquals(monitor.getTotalMessagesForTransitToInitialStateReceivedCounter(), 10L);
     Assert.assertEquals(monitor.getSensorName(),
         "ParticipantStatus.testCluster.DEFAULT|test.testInstance");
     Assert.assertEquals(monitor.getInstanceName(), testInstance);

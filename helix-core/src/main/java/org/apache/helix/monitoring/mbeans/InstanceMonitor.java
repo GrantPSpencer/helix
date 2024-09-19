@@ -52,7 +52,8 @@ public class InstanceMonitor extends DynamicMBeanProvider {
     ALL_PARTITIONS_DISABLED_GAUGE("AllPartitionsDisabled"),
     MAX_CAPACITY_USAGE_GAUGE("MaxCapacityUsageGauge"),
     MESSAGE_QUEUE_SIZE_GAUGE("MessageQueueSizeGauge"),
-    PASTDUE_MESSAGE_GAUGE("PastDueMessageGauge");
+    PASTDUE_MESSAGE_GAUGE("PastDueMessageGauge"),
+    TOTAL_MESSAGES_FOR_TRANSIT_TO_INITIAL_STATE_RECEIVED_COUNTER("TotalMessagesForTransitToInitialStateReceivedCounter");
 
     private final String metricName;
 
@@ -73,6 +74,7 @@ public class InstanceMonitor extends DynamicMBeanProvider {
 
   // Counters
   private SimpleDynamicMetric<Long> _totalMessagedReceivedCounter;
+  private SimpleDynamicMetric<Long> _totalMessagesForTransitToInitialStateReceivedCounter;
 
   // Gauges
   private SimpleDynamicMetric<Long> _enabledStatusGauge;
@@ -104,7 +106,8 @@ public class InstanceMonitor extends DynamicMBeanProvider {
   private void createMetrics() {
     _totalMessagedReceivedCounter = new SimpleDynamicMetric<>(
         InstanceMonitorMetric.TOTAL_MESSAGE_RECEIVED_COUNTER.metricName(), 0L);
-
+    _totalMessagesForTransitToInitialStateReceivedCounter = new SimpleDynamicMetric<>(
+        InstanceMonitorMetric.TOTAL_MESSAGES_FOR_TRANSIT_TO_INITIAL_STATE_RECEIVED_COUNTER.metricName(), 0L);
     _disabledPartitionsGauge =
         new SimpleDynamicMetric<>(InstanceMonitorMetric.DISABLED_PARTITIONS_GAUGE.metricName(),
             0L);
@@ -128,6 +131,7 @@ public class InstanceMonitor extends DynamicMBeanProvider {
   private List<DynamicMetric<?, ?>> buildAttributeList() {
     List<DynamicMetric<?, ?>> attributeList = Lists.newArrayList(
         _totalMessagedReceivedCounter,
+        _totalMessagesForTransitToInitialStateReceivedCounter,
         _disabledPartitionsGauge,
         _allPartitionsDisabledGauge,
         _enabledStatusGauge,
@@ -158,6 +162,9 @@ public class InstanceMonitor extends DynamicMBeanProvider {
 
   protected long getTotalMessageReceived() {
     return _totalMessagedReceivedCounter.getValue();
+  }
+  protected long getTotalMessagesForTransitToInitialStateReceivedCounter() {
+    return _totalMessagesForTransitToInitialStateReceivedCounter.getValue();
   }
 
   protected long getDisabledPartitions() {
@@ -228,6 +235,11 @@ public class InstanceMonitor extends DynamicMBeanProvider {
   public synchronized void increaseMessageCount(long messageReceived) {
     _totalMessagedReceivedCounter
         .updateValue(_totalMessagedReceivedCounter.getValue() + messageReceived);
+  }
+
+  public synchronized void increaseTotalMessagesForTransitToInitialStateReceivedCounter(long messageReceived) {
+    _totalMessagesForTransitToInitialStateReceivedCounter.updateValue(
+        _totalMessagesForTransitToInitialStateReceivedCounter.getValue() + messageReceived);
   }
 
   /**
