@@ -758,7 +758,7 @@ public class ZKHelixAdmin implements HelixAdmin {
           PropertyPathBuilder.instanceConfig(clusterName, instanceName)), -1),
       Op.delete(PropertyPathBuilder.liveInstance(clusterName, instanceName), -1));
 
-    List< OpResult> opResults = _zkClient.multi(operations);
+    List<OpResult> opResults = _zkClient.multi(operations);
     return opResults.stream().noneMatch(result -> result instanceof OpResult.ErrorResult);
   }
 
