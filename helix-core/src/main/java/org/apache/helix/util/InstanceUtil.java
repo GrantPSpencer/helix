@@ -139,7 +139,7 @@ public class InstanceUtil {
     // Retrieve and filter instances with matching logical ID
     return configAccessor.getKeys(
             new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT,
-                clusterName).build()).stream()
+                clusterName).build()).parallelStream()
         .map(instanceName -> configAccessor.getInstanceConfig(clusterName, instanceName)).filter(
             potentialInstanceConfig ->
                 !potentialInstanceConfig.getInstanceName().equals(instanceConfig.getInstanceName())
