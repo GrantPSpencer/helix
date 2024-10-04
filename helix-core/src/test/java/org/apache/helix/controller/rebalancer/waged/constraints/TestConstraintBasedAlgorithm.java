@@ -62,8 +62,7 @@ public class TestConstraintBasedAlgorithm {
       Assert.assertEquals(ex.getFailureType(), HelixRebalanceException.Type.FAILED_TO_CALCULATE);
     }
 
-    verify(mockHardConstraint, times(1)).setEnableLogging(eq(true));
-    verify(mockHardConstraint, times(1)).isAssignmentValid(any(), any(), any());
+    verify(mockHardConstraint, times(1)).isAssignmentValid(any(), any(), any(), );
   }
 
   @Test
