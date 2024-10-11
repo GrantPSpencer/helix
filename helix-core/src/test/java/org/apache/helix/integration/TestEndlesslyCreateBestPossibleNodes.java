@@ -11,6 +11,10 @@ import org.apache.helix.integration.manager.MockParticipantManager;
 import org.apache.helix.manager.zk.ZKHelixDataAccessor;
 import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.IdealState;
+import org.apache.helix.model.ResourceConfig;
+import org.apache.helix.tools.ClusterVerifiers.BestPossibleExternalViewVerifier;
+import org.apache.helix.tools.ClusterVerifiers.StrictMatchExternalViewVerifier;
+import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -28,11 +32,29 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
   private static List<String> _resourceNames = new ArrayList<>();
   private static ClusterControllerManager _controller;
   private HelixDataAccessor _dataAccessor;
+  private int testIteration = 0;
+  BestPossibleExternalViewVerifier _bestPossibleClusterVerifier;
+  StrictMatchExternalViewVerifier _clusterVerifier;
 
 
   @BeforeClass
   public void beforeClass() {
     System.out.println("Start test: " + TestHelper.getTestClassName());
+
+  }
+
+  @BeforeMethod
+  public void beforeMethod() {
+    _resourceNames.clear();
+    for (MockParticipantManager participant : _participants) {
+      dropParticipant(participant);
+    }
+    if (_controller != null) {
+      _controller.syncStop();
+    }
+    _participants.clear();
+
+    CLUSTER_NAME = TestHelper.getTestClassName() + "_cluster_" + testIteration++;
     _gSetupTool.addCluster(CLUSTER_NAME, true);
 
     _dataAccessor = new ZKHelixDataAccessor(CLUSTER_NAME, _baseAccessor);
@@ -40,35 +62,25 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
     clusterConfig.setPersistBestPossibleAssignment(true);
     _dataAccessor.updateProperty(_dataAccessor.keyBuilder().clusterConfig(), clusterConfig);
 
-    String controllerName = CONTROLLER_PREFIX + "_0";
-    _controller = new ClusterControllerManager(ZK_ADDR, CLUSTER_NAME, controllerName);
-    _controller.syncStart();
-  }
-
-  @BeforeMethod
-  public void beforeMethod() {
-    for (MockParticipantManager participant : _participants) {
-      dropParticipant(participant);
-    }
-    _participants.clear();
-    for (String resourceName : _resourceNames) {
-      _gSetupTool.getClusterManagementTool().dropResource(CLUSTER_NAME, resourceName);
-    }
-    _resourceNames.clear();
-
-    _gSetupTool.getClusterManagementTool().addCluster(CLUSTER_NAME, true);
-
     for (int i = 0; i < PARTICIPANT_COUNT; i++) {
       addParticipant("localhost_" + i);
     }
+
+    String controllerName = CONTROLLER_PREFIX + "_0";
+    _controller = new ClusterControllerManager(ZK_ADDR, CLUSTER_NAME, controllerName);
+    _controller.syncStart();
+
+    _bestPossibleClusterVerifier = new BestPossibleExternalViewVerifier.Builder(CLUSTER_NAME).setZkAddr(ZK_ADDR)
+        .setWaitTillVerify(TestHelper.DEFAULT_REBALANCE_PROCESSING_WAIT_TIME)
+        .build();
+    _clusterVerifier = new StrictMatchExternalViewVerifier.Builder(CLUSTER_NAME).setZkAddr(ZK_ADDR)
+        .setDeactivatedNodeAwareness(true)
+        .setWaitTillVerify(TestHelper.DEFAULT_REBALANCE_PROCESSING_WAIT_TIME)
+        .build();
   }
 
   @Test
   public void testCrushedToWage() throws Exception {
-
-    // enter MM while we create resources
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, true, "ADMIN", null);
-
     for (int i = 0; i < RESOURCE_COUNT; i++) {
       String resourceName = "testResource_" + i;
       _gSetupTool.addResourceToCluster(CLUSTER_NAME, resourceName, PARTITION_COUNT, "LeaderStandby",
@@ -86,14 +98,14 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
     IdealState resourceToDisableIS = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, _resourceNames.get(0));
     String resourcetoDisableName = resourceToDisableIS.getResourceName();
 
-    // Exit MM and let controller make assignments based off CRUSHED calculation
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, "ADMIN", null);
-
     List<String> partitionsToDisable = new ArrayList<>(resourceToDisableIS.getPartitionSet());
     for (MockParticipantManager participant : _participants) {
       _gSetupTool.getClusterManagementTool().enablePartition(false, CLUSTER_NAME, participant.getInstanceName(),
           resourcetoDisableName, partitionsToDisable);
     }
+
+    // Let cluster converge on CRUSHED assignments
+    Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
 
     // Switch all resources to waged and full auto
     for (String resource : _gSetupTool.getClusterManagementTool().getResourcesInCluster(CLUSTER_NAME)) {
@@ -104,46 +116,40 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
     }
 
     // FLIP THIS TO TRUE TO MONITOR THE BEHAVIOR
-    boolean endlesslyLoop = false;
+    boolean endlesslyLoop = true;
     System.out.println("starting endless loop: " + endlesslyLoop);
     while (endlesslyLoop) {}
   }
 
+  // Rebalance will fail for this test but it will not endlessly create znodes. Showing that the bug is specific to some
+  // conditions caused during switch from CRUSHED --> WAGED
   @Test
   public void testNewWagededResources() throws Exception {
-
     // enter MM while we create resources
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, true, "ADMIN", null);
-
     for (int i = 0; i < RESOURCE_COUNT; i++) {
       String resourceName = "testResource_" + i;
-      _gSetupTool.addResourceToCluster(CLUSTER_NAME, resourceName, PARTITION_COUNT, "LeaderStandby",
-          IdealState.RebalanceMode.FULL_AUTO.name(), null);
-      IdealState is = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, resourceName);
-      is.setReplicas(Integer.toString(REPLICA_COUNT));
-      is.setMinActiveReplicas(MIN_ACTIVE_REPLICAS);
-      is.setRebalancerClassName("org.apache.helix.controller.rebalancer.waged.WagedRebalancer");
-      _gSetupTool.getClusterManagementTool().setResourceIdealState(CLUSTER_NAME, resourceName, is);
+      createResourceWithWagedRebalance(CLUSTER_NAME, resourceName, "LeaderStandby", PARTITION_COUNT, REPLICA_COUNT, MIN_ACTIVE_REPLICAS);
       _resourceNames.add(resourceName);
     }
 
-    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, "ADMIN", null);
+    Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
+
+    IdealState resourceToDisableIS = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, _resourceNames.get(0));
+    String resourcetoDisableName = resourceToDisableIS.getResourceName();
+    _gSetupTool.getClusterManagementTool().enableResource(CLUSTER_NAME, resourcetoDisableName, false);
+    Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
+
+    List<String> partitionsToDisable = new ArrayList<>(resourceToDisableIS.getPartitionSet());
+    for (MockParticipantManager participant : _participants) {
+      _gSetupTool.getClusterManagementTool().enablePartition(false, CLUSTER_NAME, participant.getInstanceName(),
+          resourcetoDisableName, partitionsToDisable);
+    }
+    _gSetupTool.getClusterManagementTool().enableResource(CLUSTER_NAME, resourcetoDisableName, true);
+
+    System.out.println("starting endless loop");
     while(true) {
 
     }
-
-//    IdealState resourceToDisableIS = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, _resourceNames.get(0));
-//    String resourcetoDisableName = resourceToDisableIS.getResourceName();
-//    List<String> partitionsToDisable = new ArrayList<>(resourceToDisableIS.getPartitionSet());
-//    for (MockParticipantManager participant : _participants) {
-//      _gSetupTool.getClusterManagementTool().enablePartition(false, CLUSTER_NAME, participant.getInstanceName(),
-//          resourcetoDisableName, partitionsToDisable);
-//    }
-//
-//    // FLIP THIS TO TRUE TO ENDLESSLY LOOP AND MONITOR THE BEHAVIOR
-//    boolean endlesslyLoop = true;
-//    System.out.println("starting endless loop: " + endlesslyLoop);
-//    while (endlesslyLoop) {}
   }
 
   public MockParticipantManager addParticipant(String instanceName) {
