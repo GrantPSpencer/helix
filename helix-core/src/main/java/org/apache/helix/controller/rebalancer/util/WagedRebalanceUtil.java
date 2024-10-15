@@ -44,6 +44,7 @@ public class WagedRebalanceUtil {
    */
   public static Map<String, ResourceAssignment> calculateAssignment(ClusterModel clusterModel,
       RebalanceAlgorithm algorithm) throws HelixRebalanceException {
+    System.out.println("--- calculating new waged assignment ---");
     long startTime = System.currentTimeMillis();
     LOG.info("Start calculating for an assignment with algorithm {}",
         algorithm.getClass().getSimpleName());

@@ -107,6 +107,8 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
     // Let cluster converge on CRUSHED assignments
     Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
 
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, true, "Test", null);
+
     // Switch all resources to waged and full auto
     for (String resource : _gSetupTool.getClusterManagementTool().getResourcesInCluster(CLUSTER_NAME)) {
       IdealState is = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, resource);
@@ -115,30 +117,39 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
       _gSetupTool.getClusterManagementTool().setResourceIdealState(CLUSTER_NAME, resource, is);
     }
 
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, "Test", null);
+
+
     // FLIP THIS TO TRUE TO MONITOR THE BEHAVIOR
-    boolean endlesslyLoop = true;
+    boolean endlesslyLoop = false;
     System.out.println("starting endless loop: " + endlesslyLoop);
     while (endlesslyLoop) {}
   }
 
   // Rebalance will fail for this test but it will not endlessly create znodes. Showing that the bug is specific to some
-  // conditions caused during switch from CRUSHED --> WAGED
+  // conditions caused during switch from CRUSHED --> WAGED.. This was an attempt to recreate the scenario where all nodes were in offline state
+  // in current state before disabling the partition on each node. Currently, I think the reason the previos test causes the endless node creation behavior
+  // is because it is continuously calculating a new WAGED assignment. The result of calculateAssignment excludes the disabled partition and that is persisted to in memory store.
+  // When we then try to get the
   @Test
   public void testNewWagededResources() throws Exception {
     // enter MM while we create resources
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, true, "Test", null);
     for (int i = 0; i < RESOURCE_COUNT; i++) {
       String resourceName = "testResource_" + i;
       createResourceWithWagedRebalance(CLUSTER_NAME, resourceName, "LeaderStandby", PARTITION_COUNT, REPLICA_COUNT, MIN_ACTIVE_REPLICAS);
       _resourceNames.add(resourceName);
     }
 
-    Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
-
     IdealState resourceToDisableIS = _gSetupTool.getClusterManagementTool().getResourceIdealState(CLUSTER_NAME, _resourceNames.get(0));
     String resourcetoDisableName = resourceToDisableIS.getResourceName();
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, "Test", null);
+    Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
+
     _gSetupTool.getClusterManagementTool().enableResource(CLUSTER_NAME, resourcetoDisableName, false);
     Assert.assertTrue(_bestPossibleClusterVerifier.verifyByPolling());
 
+    System.out.println("disabling partitions");
     List<String> partitionsToDisable = new ArrayList<>(resourceToDisableIS.getPartitionSet());
     for (MockParticipantManager participant : _participants) {
       _gSetupTool.getClusterManagementTool().enablePartition(false, CLUSTER_NAME, participant.getInstanceName(),
@@ -146,10 +157,10 @@ public class TestEndlesslyCreateBestPossibleNodes extends ZkTestBase {
     }
     _gSetupTool.getClusterManagementTool().enableResource(CLUSTER_NAME, resourcetoDisableName, true);
 
-    System.out.println("starting endless loop");
-    while(true) {
-
-    }
+    // FLIP THIS TO TRUE TO MONITOR THE BEHAVIOR
+    boolean endlesslyLoop = false;
+    System.out.println("starting endless loop: " + endlesslyLoop);
+    while (endlesslyLoop) {}
   }
 
   public MockParticipantManager addParticipant(String instanceName) {
