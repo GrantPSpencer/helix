@@ -252,6 +252,8 @@ public interface RealmAwareZkClient {
 
   void deleteRecursively(String path);
 
+  void deleteRecursively(List<String> paths);
+
   boolean delete(final String path);
 
   boolean delete(final String path, final int expectedVersion);

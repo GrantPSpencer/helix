@@ -21,6 +21,7 @@ package org.apache.helix.zookeeper.impl.client;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -51,6 +52,7 @@ import org.apache.helix.zookeeper.zkclient.ZkConnection;
 import org.apache.helix.zookeeper.zkclient.ZkServer;
 import org.apache.helix.zookeeper.zkclient.callback.ZkAsyncCallbacks;
 import org.apache.helix.zookeeper.zkclient.exception.ZkException;
+import org.apache.helix.zookeeper.zkclient.exception.ZkNoNodeException;
 import org.apache.helix.zookeeper.zkclient.exception.ZkSessionMismatchedException;
 import org.apache.helix.zookeeper.zkclient.exception.ZkTimeoutException;
 import org.apache.helix.zookeeper.zkclient.metric.ZkClientMonitor;
@@ -1230,5 +1232,63 @@ public class TestRawZkClient extends ZkTestBase {
         zkClient.close();
       }
     }
+  }
+
+  @Test
+  void testDeleteRecursively() {
+    System.out.println("Start test: " + TestHelper.getTestMethodName());
+    String grandParent = "/testDeleteRecursively";
+    String parent = grandParent + "/parent";
+    String child1 = parent + "/child1";
+    String child2 = parent + "/child2";
+    _zkClient.createPersistent(grandParent);
+    _zkClient.createPersistent(parent);
+    _zkClient.createPersistent(child1);
+    _zkClient.createPersistent(child2);
+
+    String nonexistentPath = grandParent + "/nonexistent";
+    Assert.assertFalse(_zkClient.exists(nonexistentPath));
+
+
+    // Attempting to delete nonexistent path should cause operation to fail
+    try {
+      _zkClient.deleteRecursively(Arrays.asList(grandParent, nonexistentPath));
+      Assert.fail("Operation should not succeed when delete called on nonexistent path.");
+    } catch (ZkNoNodeException expected) {
+      // Caught expected exception
+    }
+
+    Assert.assertTrue(_zkClient.exists(grandParent));
+    Assert.assertFalse(_zkClient.getChildren(parent).isEmpty());
+
+    // Test calling delete on same path twice
+    try {
+      _zkClient.deleteRecursively(Arrays.asList(grandParent, grandParent));
+      Assert.fail("Operation should not succeed when attempting to delete same path twice");
+    } catch (ZkNoNodeException expected) {
+      // Caught expected exception
+    }
+
+    Assert.assertTrue(_zkClient.exists(grandParent));
+    Assert.assertFalse(_zkClient.getChildren(parent).isEmpty());
+
+    // Test calling delete on path that is child of another path in the list
+    try {
+      _zkClient.deleteRecursively(Arrays.asList(grandParent, parent));
+      Assert.fail("Operation should not succeed when attempting to delete same path twice");
+    } catch (ZkNoNodeException expected) {
+      // Caught expected exception
+    }
+
+    Assert.assertTrue(_zkClient.exists(grandParent));
+    Assert.assertFalse(_zkClient.getChildren(parent).isEmpty());
+
+    // Test successfully delete multiple paths
+    String newNode = "/newNode";
+    _zkClient.createPersistent(newNode);
+
+    _zkClient.deleteRecursively(Arrays.asList(grandParent, newNode));
+    Assert.assertFalse(_zkClient.exists(grandParent));
+    Assert.assertFalse(_zkClient.exists(newNode));
   }
 }

@@ -1342,4 +1342,29 @@ public class TestZkHelixAdmin extends ZkUnitTestBase {
       _gSetupTool.deleteCluster(clusterName);
     }
   }
+
+  @Test
+  public void testDropInstanceAtomic() {
+    System.out.println("Start test :" + TestHelper.getTestMethodName());
+    int numInstances = 5;
+    final String clusterName = getShortClassName();
+    HelixAdmin admin = new ZKHelixAdmin(_gZkClient);
+    admin.addCluster(clusterName, true);
+    Assert.assertTrue(ZKUtil.isClusterSetup(clusterName, _gZkClient), "Cluster should be setup");
+
+    // Add instances to cluster
+    for (int i = 0; i < numInstances; i++) {
+      admin.addInstance(clusterName, new InstanceConfig("localhost_" + i));
+      // Create dummy message nodes
+      _gZkClient.createPersistent(PropertyPathBuilder.instanceMessage(clusterName, "localhost_" + i, ""+i));
+    }
+    Assert.assertTrue(admin.getInstancesInCluster(clusterName).size() == numInstances, "Instances should be added");
+
+    for (int i = 0; i < 5; i++) {
+      admin.dropInstance(clusterName, new InstanceConfig("localhost_" + i));
+    }
+    Assert.assertTrue(admin.getInstancesInCluster(clusterName).isEmpty(), "Instances should be removed");
+
+    System.out.println("End test :" + TestHelper.getTestMethodName());
+  }
 }

@@ -20,13 +20,16 @@ package org.apache.helix.zookeeper.zkclient;
  */
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -1794,30 +1797,50 @@ public class ZkClient implements Watcher {
   /**
    * Delete the path as well as all its children.
    * @param path
-   * @throws ZkClientException
    */
-  public void deleteRecursively(String path) throws ZkClientException {
-    List<String> children;
-    try {
-      children = getChildren(path, false);
-    } catch (ZkNoNodeException e) {
-      // if the node to be deleted does not exist, treat it as success.
-      return;
-    }
+  public void deleteRecursively(String path) {
+    List<Op> ops = getOpsForRecursiveDelete(path);
+    multi(ops);
+  }
 
-    for (String subPath : children) {
-      deleteRecursively(path + "/" + subPath);
+  /**
+   * Delete all provided paths as well as all their children.
+   * @param paths
+   */
+  public void deleteRecursively(List<String> paths) {
+    List<Op> ops = new ArrayList<>();
+    for (String path : paths) {
+      ops.addAll(getOpsForRecursiveDelete(path));
     }
+    multi(ops);
+  }
 
-    // delete() function call will return true if successful, false if the path does not
-    // exist (in this context, it should be treated as successful), and throw exception
-    // if there is any other failure case.
-    try {
-      delete(path);
-    } catch (Exception e) {
-      LOG.error("zkclient {}, Failed to delete {}, exception {}", _uid, path, e);
-      throw new ZkClientException("Failed to delete " + path, e);
+  /**
+   * Get the list of operations to delete the given path and all its children. Performs simple BFS to put delete
+   * operations for leaf nodes first before parent nodes.
+   * @param path the path to delete
+   * @return the list of ZK operations to delete the given path and all its children
+   */
+  private List<Op> getOpsForRecursiveDelete(String path) {
+    HashSet<String> visited = new HashSet<>();
+    List<Op> ops = new ArrayList<>();
+    Stack<String> nodes = new Stack<>();
+    nodes.push(path);
+
+    while (!nodes.isEmpty()) {
+      String node = nodes.peek();
+      List<String> children = getChildren(node, false);
+      if (children.isEmpty() || visited.contains(node)) {
+        nodes.pop();
+        ops.add(Op.delete(node, -1));
+      } else {
+        for (String child : children) {
+          nodes.push(node + "/" + child);
+        }
+      }
+      visited.add(node);
     }
+    return ops;
   }
 
   private void processDataOrChildChange(WatchedEvent event, long notificationTime) {
