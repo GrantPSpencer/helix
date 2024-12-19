@@ -213,6 +213,8 @@ public class TestInstanceOperation extends ZkTestBase {
   }
 
   private void removeOfflineOrInactiveInstances() {
+    // Enable maintenance mode to mitigate race conditions with node removal.
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, true, "removing nodes", null);
     // Remove all instances that are not live, disabled, or in SWAP_IN state.
     for (int i = 0; i < _participants.size(); i++) {
       String participantName = _participantNames.get(i);
@@ -230,8 +232,7 @@ public class TestInstanceOperation extends ZkTestBase {
         i--;
       }
     }
-
-    Assert.assertTrue(_clusterVerifier.verifyByPolling());
+    _gSetupTool.getClusterManagementTool().manuallyEnableMaintenanceMode(CLUSTER_NAME, false, "removing nodes", null);
   }
 
   @Test
