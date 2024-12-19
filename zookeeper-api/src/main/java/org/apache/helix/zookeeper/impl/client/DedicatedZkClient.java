@@ -384,11 +384,17 @@ public class DedicatedZkClient implements RealmAwareZkClient {
   }
 
   @Override
-  public void deleteRecursively(List<String> paths) {
+  public void deleteRecursivelyAtomic(String path) {
+    checkIfPathContainsShardingKey(path);
+    _rawZkClient.deleteRecursivelyAtomic(path);
+  }
+
+  @Override
+  public void deleteRecursivelyAtomic(List<String> paths) {
     for (String path : paths) {
       checkIfPathContainsShardingKey(path);
     }
-    _rawZkClient.deleteRecursively(paths);
+    _rawZkClient.deleteRecursivelyAtomic(paths);
   }
 
   @Override
