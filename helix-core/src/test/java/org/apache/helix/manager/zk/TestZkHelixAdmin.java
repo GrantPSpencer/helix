@@ -237,7 +237,7 @@ public class TestZkHelixAdmin extends ZkUnitTestBase {
         new ZkException("ZkException: failed to delete " + instancePath,
             new KeeperException.NotEmptyException(
                 "NotEmptyException: directory" + instancePath + " is not empty"))))
-        .when(mockZkClient).deleteRecursively(instancePath);
+        .when(mockZkClient).deleteRecursivelyAtomic(instancePath);
 
     HelixAdmin helixAdminMock = new ZKHelixAdmin(mockZkClient);
     try {

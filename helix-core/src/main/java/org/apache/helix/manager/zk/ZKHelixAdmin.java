@@ -277,7 +277,7 @@ public class ZKHelixAdmin implements HelixAdmin {
     int retryCnt = 0;
     while (true) {
       try {
-        _zkClient.deleteRecursively(Arrays.asList(instanceConfigPath, instancePath));
+        _zkClient.deleteRecursivelyAtomic(Arrays.asList(instanceConfigPath, instancePath));
         return;
       } catch (ZkClientException e) {
         if (retryCnt < 3 && e.getCause() instanceof ZkException && e.getCause()
@@ -327,7 +327,7 @@ public class ZKHelixAdmin implements HelixAdmin {
     logger.info("Purge instance {} from cluster {}.", instanceName, clusterName);
     String instanceConfigPath = PropertyPathBuilder.instanceConfig(clusterName, instanceName);
     String instancePath = PropertyPathBuilder.instance(clusterName, instanceName);
-    _zkClient.deleteRecursively(Arrays.asList(instanceConfigPath, instancePath));
+    _zkClient.deleteRecursivelyAtomic(Arrays.asList(instanceConfigPath, instancePath));
   }
 
   @Override

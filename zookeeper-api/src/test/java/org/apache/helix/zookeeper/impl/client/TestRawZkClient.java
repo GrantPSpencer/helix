@@ -1249,10 +1249,9 @@ public class TestRawZkClient extends ZkTestBase {
     String nonexistentPath = grandParent + "/nonexistent";
     Assert.assertFalse(_zkClient.exists(nonexistentPath));
 
-
     // Attempting to delete nonexistent path should cause operation to fail
     try {
-      _zkClient.deleteRecursively(Arrays.asList(grandParent, nonexistentPath));
+      _zkClient.deleteRecursivelyAtomic(Arrays.asList(grandParent, nonexistentPath));
       Assert.fail("Operation should not succeed when delete called on nonexistent path.");
     } catch (ZkNoNodeException expected) {
       // Caught expected exception
@@ -1263,7 +1262,7 @@ public class TestRawZkClient extends ZkTestBase {
 
     // Test calling delete on same path twice
     try {
-      _zkClient.deleteRecursively(Arrays.asList(grandParent, grandParent));
+      _zkClient.deleteRecursivelyAtomic(Arrays.asList(grandParent, grandParent));
       Assert.fail("Operation should not succeed when attempting to delete same path twice");
     } catch (ZkNoNodeException expected) {
       // Caught expected exception
@@ -1274,7 +1273,7 @@ public class TestRawZkClient extends ZkTestBase {
 
     // Test calling delete on path that is child of another path in the list
     try {
-      _zkClient.deleteRecursively(Arrays.asList(grandParent, parent));
+      _zkClient.deleteRecursivelyAtomic(Arrays.asList(grandParent, parent));
       Assert.fail("Operation should not succeed when attempting to delete same path twice");
     } catch (ZkNoNodeException expected) {
       // Caught expected exception
@@ -1283,11 +1282,11 @@ public class TestRawZkClient extends ZkTestBase {
     Assert.assertTrue(_zkClient.exists(grandParent));
     Assert.assertFalse(_zkClient.getChildren(parent).isEmpty());
 
-    // Test successfully delete multiple paths
+    // Test successfully delete multiple paths. Also that operation succeeds when attempting to delete non-existent path
     String newNode = "/newNode";
     _zkClient.createPersistent(newNode);
 
-    _zkClient.deleteRecursively(Arrays.asList(grandParent, newNode));
+    _zkClient.deleteRecursivelyAtomic(Arrays.asList(grandParent, newNode));
     Assert.assertFalse(_zkClient.exists(grandParent));
     Assert.assertFalse(_zkClient.exists(newNode));
   }

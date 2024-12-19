@@ -371,15 +371,20 @@ public class FederatedZkClient implements RealmAwareZkClient {
     getZkClient(path).deleteRecursively(path);
   }
 
+  @Override
+  public void deleteRecursivelyAtomic(String path) {
+    getZkClient(path).deleteRecursivelyAtomic(path);
+  }
+
   // TODO - cannot guarantee atomic across paths for federated case because paths could be in different realms.
   // Should we allow if all paths are in the same realm, or always throw unimplemented exception?
   @Override
-  public void deleteRecursively(List<String> paths) {
+  public void deleteRecursivelyAtomic(List<String> paths) {
     // Check if all paths are in the same realm. If not, throw error as we cannot guarantee atomicity across clients.
     if (paths.stream().map(this::getZkRealm).distinct().count() > 1) {
       throw new IllegalArgumentException("Cannot delete paths across realms");
     }
-    getZkClient(paths.get(0)).deleteRecursively(paths);
+    getZkClient(paths.get(0)).deleteRecursivelyAtomic(paths);
   }
 
   @Override
