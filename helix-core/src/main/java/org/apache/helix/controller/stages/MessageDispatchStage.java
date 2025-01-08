@@ -22,11 +22,13 @@ package org.apache.helix.controller.stages;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import java.util.Set;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerProperties;
@@ -41,6 +43,7 @@ import org.apache.helix.model.LiveInstance;
 import org.apache.helix.model.Message;
 import org.apache.helix.model.Partition;
 import org.apache.helix.model.Resource;
+import org.apache.helix.model.StateModelDefinition;
 import org.apache.helix.monitoring.mbeans.ClusterStatusMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +57,7 @@ public abstract class MessageDispatchStage extends AbstractBaseStage {
     Map<String, Resource> resourceMap =
         event.getAttribute(AttributeName.RESOURCES_TO_REBALANCE.name());
     BaseControllerDataProvider cache = event.getAttribute(AttributeName.ControllerDataProvider.name());
+    CurrentStateOutput currentStateOutput = event.getAttribute(AttributeName.CURRENT_STATE.name());
     Map<String, LiveInstance> liveInstanceMap = cache.getLiveInstances();
 
     if (manager == null || resourceMap == null || messageOutput == null || cache == null
@@ -94,13 +98,23 @@ public abstract class MessageDispatchStage extends AbstractBaseStage {
     }
 
     List<Message> messagesSent = sendMessages(dataAccessor, outputMessages);
+    Set<Message> messagesForTransitToInitialState = new HashSet<>();
+
+    for (Message message : messagesSent) {
+      Partition partition = resourceMap.get(message.getResourceName()).getPartition(message.getPartitionName());
+      StateModelDefinition stateModelDef = cache.getStateModelDef(message.getStateModelDef());
+      if (stateModelDef.getInitialState().equals(message.getFromState()) &&
+          currentStateOutput.getCurrentState(message.getResourceName(), partition, message.getTgtName()) == null) {
+        messagesForTransitToInitialState.add(message);
+      }
+    }
 
     // TODO: Need also count messages from task rebalancer
     if (!(cache instanceof WorkflowControllerDataProvider)) {
       ClusterStatusMonitor clusterStatusMonitor =
           event.getAttribute(AttributeName.clusterStatusMonitor.name());
       if (clusterStatusMonitor != null) {
-        clusterStatusMonitor.increaseMessageReceived(outputMessages);
+        clusterStatusMonitor.increaseMessageReceived(outputMessages, messagesForTransitToInitialState);
       }
     }
     long cacheStart = System.currentTimeMillis();

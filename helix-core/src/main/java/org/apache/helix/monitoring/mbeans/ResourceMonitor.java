@@ -85,6 +85,7 @@ public class ResourceMonitor extends DynamicMBeanProvider {
   @Deprecated
   private SimpleDynamicMetric<Long> _totalMessageReceived; // This should be counter since the value behavior is ever-increasing
   private SimpleDynamicMetric<Long> _totalMessageReceivedCounter;
+  private SimpleDynamicMetric<Long> _totalMessagesForTransitToInitialStateReceivedCounter;
   // Histograms
   private HistogramDynamicMetric _partitionTopStateHandoffDurationGauge;
   private HistogramDynamicMetric _partitionTopStateHandoffHelixLatencyGauge;
@@ -161,6 +162,8 @@ public class ResourceMonitor extends DynamicMBeanProvider {
     _successTopStateHandoffCounter = new SimpleDynamicMetric("SucceededTopStateHandoffCounter", 0L);
     _successfulTopStateHandoffDurationCounter =
         new SimpleDynamicMetric("SuccessfulTopStateHandoffDurationCounter", 0L);
+    _totalMessagesForTransitToInitialStateReceivedCounter = new SimpleDynamicMetric<>(
+        "TotalMessagesForTransitToInitialStateReceivedCounter", 0L);
 
     _rebalanceState = new SimpleDynamicMetric<>("RebalanceStatus", RebalanceStatus.UNKNOWN.name());
   }
@@ -199,6 +202,10 @@ public class ResourceMonitor extends DynamicMBeanProvider {
     return _successTopStateHandoffCounter.getValue();
   }
 
+  public long getTotalMessagesForTransitToInitialStateReceivedCounter() {
+    return _totalMessagesForTransitToInitialStateReceivedCounter.getValue();
+  }
+
   public long getMaxSinglePartitionTopStateHandoffDurationGauge() {
     return _maxSinglePartitionTopStateHandoffDuration.getValue();
   }
@@ -232,6 +239,11 @@ public class ResourceMonitor extends DynamicMBeanProvider {
 
   public synchronized void increaseMessageCountWithCounter(long messageReceived) {
     _totalMessageReceivedCounter.updateValue(_totalMessageReceivedCounter.getValue() + messageReceived);
+  }
+
+  public synchronized void increaseTotalMessagesForTransitToInitialStateReceivedCounter(long messageReceived) {
+    _totalMessagesForTransitToInitialStateReceivedCounter.updateValue(
+        _totalMessagesForTransitToInitialStateReceivedCounter.getValue() + messageReceived);
   }
 
   public String getResourceName() {
@@ -509,6 +521,7 @@ public class ResourceMonitor extends DynamicMBeanProvider {
         _partitionTopStateNonGracefulHandoffDurationGauge,
         _totalMessageReceived,
         _totalMessageReceivedCounter,
+        _totalMessagesForTransitToInitialStateReceivedCounter,
         _numPendingStateTransitions,
         _rebalanceState,
         _rebalanceThrottledByErrorPartitionGauge);

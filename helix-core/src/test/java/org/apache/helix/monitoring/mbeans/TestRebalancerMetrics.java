@@ -15,7 +15,9 @@ import org.apache.helix.controller.stages.CurrentStateOutput;
 import org.apache.helix.controller.stages.IntermediateStateCalcStage;
 import org.apache.helix.controller.stages.MessageGenerationPhase;
 import org.apache.helix.controller.stages.MessageSelectionStage;
+import org.apache.helix.controller.stages.MessageThrottleStage;
 import org.apache.helix.controller.stages.ReadClusterDataStage;
+import org.apache.helix.controller.stages.resource.ResourceMessageDispatchStage;
 import org.apache.helix.model.BuiltInStateModelDefinitions;
 import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.IdealState;
@@ -156,6 +158,51 @@ public class TestRebalancerMetrics extends BaseStageTest {
 
     System.out
         .println("END testLoadBalanceMetrics at " + new Date(System.currentTimeMillis()));
+  }
+
+  @Test
+  public void testPartitionMovementMetric() {
+    System.out
+        .println("START testLoadBalanceMetrics at " + new Date(System.currentTimeMillis()));
+    String resource = "testResourceName";
+
+    int numPartition = 100;
+    int numReplica = 3;
+
+    setupIdealState(5, new String[] {resource}, numPartition,
+        numReplica, IdealState.RebalanceMode.FULL_AUTO,
+        BuiltInStateModelDefinitions.MasterSlave.name());
+    setupInstances(5);
+    setupLiveInstances(4);
+    setupStateModel();
+
+    Map<String, Resource> resourceMap =
+        getResourceMap(new String[] {resource}, numPartition,
+            BuiltInStateModelDefinitions.MasterSlave.name());
+    CurrentStateOutput currentStateOutput = new CurrentStateOutput();
+    ClusterStatusMonitor monitor = new ClusterStatusMonitor(_clusterName);
+    monitor.active();
+    event.addAttribute(AttributeName.RESOURCES.name(), resourceMap);
+    event.addAttribute(AttributeName.RESOURCES_TO_REBALANCE.name(), resourceMap);
+    event.addAttribute(AttributeName.ControllerDataProvider.name(), new ResourceControllerDataProvider());
+    event.addAttribute(AttributeName.clusterStatusMonitor.name(), monitor);
+    event.addAttribute(AttributeName.CURRENT_STATE.name(), currentStateOutput);
+    event.addAttribute(AttributeName.CURRENT_STATE_EXCLUDING_UNKNOWN.name(), currentStateOutput);
+
+    runStage(event, new ReadClusterDataStage());
+    runStage(event, new BestPossibleStateCalcStage());
+    runStage(event, new MessageGenerationPhase());
+    runStage(event, new MessageSelectionStage());
+    runStage(event, new IntermediateStateCalcStage());
+    runStage(event, new MessageThrottleStage());
+    runStage(event, new ResourceMessageDispatchStage());
+
+
+    ClusterStatusMonitor clusterStatusMonitor = event.getAttribute(AttributeName.clusterStatusMonitor.name());
+    ResourceMonitor resourceMonitor = clusterStatusMonitor.getResourceMonitor(resource);
+    Assert.assertEquals(resourceMonitor.getTotalMessagesForTransitToInitialStateReceivedCounter(), numPartition * numReplica);
+    System.out
+        .println("END testPartitionMovementMetric at " + new Date(System.currentTimeMillis()));
   }
 
   private void setupThrottleConfig(ClusterConfig clusterConfig,
