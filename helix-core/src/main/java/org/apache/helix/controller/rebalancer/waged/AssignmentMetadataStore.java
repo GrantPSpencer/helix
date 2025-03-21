@@ -123,6 +123,8 @@ public class AssignmentMetadataStore {
     // Persist to ZK
     HelixProperty combinedAssignments = combineAssignments(key, newAssignment);
     try {
+      System.out.println("persisting to path: " + path);
+      System.out.println("assignment was: " + combinedAssignments);
       _dataAccessor.compressedBucketWrite(path, combinedAssignments);
     } catch (IOException e) {
       throw new HelixException(String.format("Failed to persist %s assignment to path %s", key, path), e);
