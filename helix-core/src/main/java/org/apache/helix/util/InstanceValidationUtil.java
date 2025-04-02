@@ -450,6 +450,11 @@ public class InstanceValidationUtil {
         // found the resource hosted on the instance
         if (stateByInstanceMap.containsKey(instanceName)) {
           int numHealthySiblings = 0;
+          // If this node's replica is in unhealthy state, skip the sibling check as removing this replica will not
+          // negatively affect availability.
+          if (unhealthyStates.contains(stateByInstanceMap.get(instanceName))) {
+            continue;
+          }
           for (Map.Entry<String, String> entry : stateByInstanceMap.entrySet()) {
             String siblingInstanceName = entry.getKey();
             if (!siblingInstanceName.equals(instanceName) && (toBeStoppedInstances == null
