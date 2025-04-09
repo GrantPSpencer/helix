@@ -301,7 +301,7 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
       boolean result = false;
       try {
         result = computeSingleResourceBestPossibleState(event, cache, currentStateOutput, resource,
-            output);
+            output, null);
       } catch (HelixException ex) {
         LogUtil.logError(logger, _eventId, String
             .format("Exception when calculating best possible states for %s",
@@ -322,16 +322,10 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
                 failureResources.size()));
 
     // Fall back to current states for resources that cannot be computed. This will prevent
+    // gspencer TODO -- should  only do this for full auto resources, but just a POC for now
     failureResources.parallelStream().forEach(resourceName -> {
-      if (currentStateOutput.getCurrentStateMap(resourceName).isEmpty()) {
-        return;
-      }
-
-      IdealState fakeIS = new IdealState(resourceName);
-      currentStateOutput.getCurrentStateMap(resourceName).forEach((partition, stateMap) ->
-          fakeIS.setInstanceStateMap(partition.getPartitionName(), stateMap != null ? stateMap : new HashMap<>())
-      );
-      updateBestPossibleStateOutput(output, resourceMap.get(resourceName), fakeIS);
+      computeSingleResourceBestPossibleState(event, cache, currentStateOutput, resourceMap.get(resourceName),
+          output, new MaintenanceRebalancer());
     });
 
     return output;
@@ -497,7 +491,7 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
 
   private boolean computeSingleResourceBestPossibleState(ClusterEvent event,
       ResourceControllerDataProvider cache, CurrentStateOutput currentStateOutput,
-      Resource resource, BestPossibleStateOutput output) {
+      Resource resource, BestPossibleStateOutput output, Rebalancer<ResourceControllerDataProvider> rebalancer) {
     // for each ideal state
     // read the state model def
     // for each resource
@@ -524,8 +518,9 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
       return false;
     }
 
-    Rebalancer<ResourceControllerDataProvider> rebalancer =
-        getRebalancer(idealState, resourceName, cache.isMaintenanceModeEnabled());
+    rebalancer = rebalancer != null
+        ? rebalancer : getRebalancer(idealState, resourceName, cache.isMaintenanceModeEnabled());
+
     MappingCalculator<ResourceControllerDataProvider> mappingCalculator =
         getMappingCalculator(rebalancer, resourceName);
 
