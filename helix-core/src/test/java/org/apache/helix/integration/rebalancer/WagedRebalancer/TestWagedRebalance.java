@@ -51,6 +51,7 @@ import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.ResourceAssignment;
 import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.StateModelDefinition;
+import org.apache.helix.tools.ClusterVerifiers.BestPossibleExternalViewVerifier;
 import org.apache.helix.tools.ClusterVerifiers.HelixClusterVerifier;
 import org.apache.helix.tools.ClusterVerifiers.StrictMatchExternalViewVerifier;
 import org.apache.helix.tools.ClusterVerifiers.ZkHelixClusterVerifier;
@@ -278,27 +279,39 @@ public class TestWagedRebalance extends ZkTestBase {
       Assert.assertTrue(instancesWithAssignmentsImmediate.contains(instance_0));
       Assert.assertTrue(instancesWithAssignmentsImmediate.contains(instance_1));
 
-      // Force FAILED_TO_CALCULATE and ensure that both util functions return no mappings
+      BestPossibleExternalViewVerifier BpEvVerifier =
+          new BestPossibleExternalViewVerifier.Builder(CLUSTER_NAME).setZkAddr(ZK_ADDR)
+              .setWaitTillVerify(TestHelper.DEFAULT_REBALANCE_PROCESSING_WAIT_TIME).build();
+
+      Assert.assertTrue(BpEvVerifier.verifyByPolling());
+
+      // Force FAILED_TO_CALCULATE and ensure that both util functions return the current states
+      Map<String, ExternalView> evMapping = new HashMap<>();
+      _gSetupTool.getClusterManagementTool().getResourcesInCluster(CLUSTER_NAME).forEach(resourceName -> {
+        ExternalView ev = _gSetupTool.getClusterManagementTool().getResourceExternalView(CLUSTER_NAME, resourceName);
+        evMapping.put(resourceName, ev);
+      });
       String testCapacityKey = "key";
       clusterConfig.setDefaultPartitionWeightMap(Collections.singletonMap(testCapacityKey, 2));
       clusterConfig.setDefaultInstanceCapacityMap(Collections.singletonMap(testCapacityKey, 1));
       clusterConfig.setInstanceCapacityKeys(Collections.singletonList(testCapacityKey));
-      try {
-        HelixUtil.getTargetAssignmentForWagedFullAuto(ZK_ADDR, clusterConfig, instanceConfigs,
-            liveInstances, idealStates, resourceConfigs);
-        Assert.fail("Expected HelixException for calculaation failure");
-      } catch (HelixException e) {
-        Assert.assertEquals(e.getMessage(),
-            "getIdealAssignmentForWagedFullAuto(): Calculation failed: Failed to compute BestPossibleState!");
+      utilResult = HelixUtil.getTargetAssignmentForWagedFullAuto(ZK_ADDR, clusterConfig, instanceConfigs,
+          liveInstances, idealStates, resourceConfigs);
+
+      // Assert util result matches EV for each resource
+      for (String resourceName : utilResult.keySet()) {
+        ResourceAssignment resourceAssignment = utilResult.get(resourceName);
+        ExternalView ev = evMapping.get(resourceName);
+        Assert.assertEquals(resourceAssignment.getRecord().getMapFields(), ev.getRecord().getMapFields());
       }
 
-      try {
-        HelixUtil.getImmediateAssignmentForWagedFullAuto(ZK_ADDR, clusterConfig, instanceConfigs,
-            liveInstances, idealStates, resourceConfigs);
-        Assert.fail("Expected HelixException for calculaation failure");
-      } catch (HelixException e) {
-        Assert.assertEquals(e.getMessage(),
-            "getIdealAssignmentForWagedFullAuto(): Calculation failed: Failed to compute BestPossibleState!");
+      utilResult = HelixUtil.getImmediateAssignmentForWagedFullAuto(ZK_ADDR, clusterConfig, instanceConfigs,
+          liveInstances, idealStates, resourceConfigs);
+
+      for (String resourceName : utilResult.keySet()) {
+        ResourceAssignment resourceAssignment = utilResult.get(resourceName);
+        ExternalView ev = evMapping.get(resourceName);
+        Assert.assertEquals(resourceAssignment.getRecord().getMapFields(), ev.getRecord().getMapFields());
       }
     } finally {
       // restore the config with async mode
