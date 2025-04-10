@@ -34,6 +34,8 @@ import org.apache.helix.model.Partition;
 public class BestPossibleStateOutput extends ResourcesStateMap {
   /* resource -> partition -> preference list */
   private Map<String, Map<String, List<String>>> _preferenceLists;
+
+  private List<String> _failedResources;
   /**
    * Deprecated, use getResourceStatesMap instead.
    *
@@ -107,5 +109,16 @@ public class BestPossibleStateOutput extends ResourcesStateMap {
 
   protected boolean containsResource(String resource) {
     return _preferenceLists != null && _preferenceLists.containsKey(resource);
+  }
+
+  public void setFailedResources(List<String> failedResources) {
+    _failedResources = failedResources;
+  }
+
+  public List<String> getFailedResources() {
+    if (_failedResources == null) {
+      return Collections.emptyList();
+    }
+    return _failedResources;
   }
 }

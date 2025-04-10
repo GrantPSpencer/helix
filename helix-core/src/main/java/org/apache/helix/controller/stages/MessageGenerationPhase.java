@@ -99,6 +99,9 @@ public class MessageGenerationPhase extends AbstractBaseStage {
     MessageOutput output = new MessageOutput();
 
     for (Resource resource : resourceMap.values()) {
+      if (bestPossibleStateOutput.getFailedResources().contains(resource.getResourceName())) {
+        continue;
+      }
       try {
         generateMessage(resource, cache, bestPossibleStateOutput, currentStateOutput, manager,
             sessionIdMap, event.getEventType(), output, messagesToCleanUp);

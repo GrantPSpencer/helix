@@ -316,6 +316,7 @@ public class BestPossibleStateCalcStage extends AbstractBaseStage {
     }
 
     // Check and report if resource rebalance has failure
+    output.setFailedResources(failureResources);
     updateRebalanceStatus(!isValid || !failureResources.isEmpty(), failureResources, helixManager,
         cache, clusterStatusMonitor, String
             .format("Failed to calculate best possible states for %d resources.",
