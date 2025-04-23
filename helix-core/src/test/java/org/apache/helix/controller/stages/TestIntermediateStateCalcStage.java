@@ -19,19 +19,26 @@ package org.apache.helix.controller.stages;
  * under the License.
  */
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
+import java.util.Set;
 import org.apache.helix.api.config.StateTransitionThrottleConfig;
 import org.apache.helix.controller.dataproviders.ResourceControllerDataProvider;
 import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
+import org.apache.helix.model.OnlineOfflineWithBootstrapSMD;
 import org.apache.helix.model.Partition;
+import org.apache.helix.model.StateModelDefinition;
 import org.apache.helix.monitoring.mbeans.ClusterStatusMonitor;
+import org.apache.helix.tools.StateModelConfigGenerator;
+import org.apache.helix.zookeeper.datamodel.ZNRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -650,6 +657,81 @@ public class TestIntermediateStateCalcStage extends BaseStageTest {
     }
   }
 
+
+  @Test
+  public void testRecoveryRebalanceMessage() {
+    int nResource = 1;
+    int nPartition = 1;
+    int nReplica = 2;
+    String resourceName = "test_resource";
+
+    String[] resources = new String[nResource];
+    resources[0] = resourceName;
+
+    preSetup(resources, nReplica, nReplica);
+
+    // Update Is with bootstrap model
+    IdealState is = accessor.getProperty(accessor.keyBuilder().idealStates(resourceName));
+    is.setStateModelDefRef(OnlineOfflineWithBootstrapSMD.name);
+    accessor.setProperty(accessor.keyBuilder().idealStates(resourceName), is);
+    StateModelDefinition onlineOfflineBootstrap = OnlineOfflineWithBootstrapSMD.build();
+    Map<String, String> metadata = new HashMap<>();
+    metadata.put("count", StateModelDefinition.STATE_REPLICA_COUNT_ALL_REPLICAS);
+    onlineOfflineBootstrap.getRecord().setMapField(OnlineOfflineWithBootstrapSMD.States.ONLINE.name(), metadata);
+    accessor.setProperty(accessor.keyBuilder().stateModelDef(onlineOfflineBootstrap.getId()), onlineOfflineBootstrap);
+//    onlineOfflineBootstrap = new StateModelDefinition(onlineOfflineBootstrap.getRecord());
+
+    event.addAttribute(AttributeName.RESOURCES.name(), getResourceMap(resources, nPartition, "OnlineOfflineWithBootstrap"));
+    event.addAttribute(AttributeName.RESOURCES_TO_REBALANCE.name(),
+        getResourceMap(resources, nPartition, "OnlineOfflineWithBootstrap"));
+
+
+    // Initialize bestpossible state and current state
+    BestPossibleStateOutput bestPossibleStateOutput = new BestPossibleStateOutput();
+    CurrentStateOutput currentStateOutput = new CurrentStateOutput();
+    MessageOutput messageSelectOutput = new MessageOutput();
+
+    // Create 2 instances to hold the 2 replicas of the 1 partition
+    Map<String, List<String>> partitionMap = new HashMap<>();
+    List<String> instances = new ArrayList<>();
+    Partition partition = new Partition(resourceName + "_" + 0);
+    for (int r = 0; r < nReplica; r++) {
+      instances.add(HOSTNAME_PREFIX + r);
+    }
+
+    // PartitionMap is used as a preferenceList.
+    // Set pending message to go from OFFLINE --> BOOTSRAP for instance 1
+    messageSelectOutput.addMessage(resourceName, partition,
+        generateMessage("OFFLINE", "BOOTSTRAP", instances.get(0)));
+    // Set current state of ONLINE for instance 2
+    currentStateOutput.setCurrentState(resourceName, partition, instances.get(1), "ONLINE");
+    bestPossibleStateOutput.setState(resourceName, partition, instances.get(1), "ONLINE");
+    partitionMap.put(partition.getPartitionName(), new ArrayList(instances));
+
+    // Add both instances to the preference list
+    bestPossibleStateOutput.setPreferenceLists(resourceName, partitionMap);
+
+    List<Message> sentMessages = messageSelectOutput.getMessages(resourceName, new Partition(resourceName + "_0"));
+    Assert.assertEquals(sentMessages.size(), 1);
+    Assert.assertEquals(sentMessages.get(0).getFromState(), "OFFLINE");
+    Assert.assertEquals(sentMessages.get(0).getToState(), "BOOTSTRAP");
+    Assert.assertNull(sentMessages.get(0).getSTRebalanceType());
+
+    event.addAttribute(AttributeName.BEST_POSSIBLE_STATE.name(), bestPossibleStateOutput);
+    event.addAttribute(AttributeName.MESSAGES_SELECTED.name(), messageSelectOutput);
+    event.addAttribute(AttributeName.CURRENT_STATE.name(), currentStateOutput);
+    event.addAttribute(AttributeName.CURRENT_STATE_EXCLUDING_UNKNOWN.name(), currentStateOutput);
+    event.addAttribute(AttributeName.ControllerDataProvider.name(), new ResourceControllerDataProvider());
+    runStage(event, new ReadClusterDataStage());
+    runStage(event, new IntermediateStateCalcStage());
+
+    sentMessages = messageSelectOutput.getMessages(resourceName, new Partition(resourceName + "_0"));
+    Assert.assertEquals(sentMessages.size(), 1);
+    Assert.assertEquals(sentMessages.get(0).getFromState(), "OFFLINE");
+    Assert.assertEquals(sentMessages.get(0).getToState(), "BOOTSTRAP");
+    Assert.assertEquals(sentMessages.get(0).getSTRebalanceType(), Message.STRebalanceType.RECOVERY_REBALANCE);
+  }
+
   private void preSetup(String[] resources, int numOfLiveInstances, int numOfReplicas) {
     setupIdealState(numOfLiveInstances, resources, numOfLiveInstances, numOfReplicas,
         IdealState.RebalanceMode.FULL_AUTO, "OnlineOffline");
@@ -666,4 +748,7 @@ public class TestIntermediateStateCalcStage extends BaseStageTest {
             StateTransitionThrottleConfig.ThrottleScope.INSTANCE, 3)));
     setClusterConfig(_clusterConfig);
   }
+
+
+
 }
