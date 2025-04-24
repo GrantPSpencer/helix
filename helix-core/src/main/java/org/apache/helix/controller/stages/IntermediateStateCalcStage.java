@@ -374,7 +374,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
       }
       for (Message message : messagesToThrottle) {
         RebalanceType rebalanceType =
-            getRebalanceTypePerMessage(requiredState, message, derivedCurrentStateMap);
+            getRebalanceTypePerMessage(requiredState, message, derivedCurrentStateMap, stateModelDef);
 
         // Number of states required by StateModelDefinition are not satisfied, need recovery
         if (rebalanceType.equals(RebalanceType.RECOVERY_BALANCE)) {
@@ -441,7 +441,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
    * @param stateModelDefinition     state model definition object for this resource
    * @return set of messages allowed for downward state transitions
    */
-  private boolean isLoadBalanceDownwardStateTransition(Message message,
+  private boolean isDownwardStateTransition(Message message,
       StateModelDefinition stateModelDefinition) {
     // state model definition is not found
     if (stateModelDefinition == null) {
@@ -486,7 +486,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
 
       for (Message message : pendingMessages) {
         StateTransitionThrottleConfig.RebalanceType rebalanceType =
-            getRebalanceTypePerMessage(requiredStates, message, currentStateMap);
+            getRebalanceTypePerMessage(requiredStates, message, currentStateMap, stateModelDefinition);
         String currentState = currentStateMap.get(message.getTgtName());
         if (currentState == null) {
           currentState = stateModelDefinition.getInitialState();
@@ -545,7 +545,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
     // If only downward allowed: 1) any non-downward ST messages will be throttled and removed.
     //                           2) any downward ST messages will respect the throttling.
     // If not only downward allowed, all ST messages should respect the throttling.
-    if (onlyDownwardLoadBalance && !isLoadBalanceDownwardStateTransition(messageToThrottle,
+    if (onlyDownwardLoadBalance && !isDownwardStateTransition(messageToThrottle,
         stateModelDefinition)) {
       resourceMessageMap.get(partition).remove(messageToThrottle);
       messagesThrottled.add(messageToThrottle.getId());
@@ -626,7 +626,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
    * @return Rebalance type. Recovery or load.
    */
   private RebalanceType getRebalanceTypePerMessage(Map<String, Integer> desiredStates,
-      Message message, Map<String, String> derivedCurrentStates) {
+      Message message, Map<String, String> derivedCurrentStates, StateModelDefinition stateModelDef) {
     Map<String, Integer> desiredStatesSnapshot = new HashMap<>(desiredStates);
     // Looping existing current states to see whether current states fulfilled all the required states.
     for (String state : derivedCurrentStates.values()) {
@@ -639,9 +639,11 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
       }
     }
 
-    // If the message contains any "required" state changes, then it is considered recovery rebalance.
-    // Otherwise, it is load balance.
-    return desiredStatesSnapshot.containsKey(message.getToState()) ? RebalanceType.RECOVERY_BALANCE
+    // If the message is an upward state transition and there are still unfulfilled states, then it is a recovery rebalance.
+    // Otherwise, it is a load balance.
+    boolean hasUnfulfilledStates = desiredStatesSnapshot.keySet().stream()
+        .anyMatch(key -> desiredStatesSnapshot.get(key) > 0);
+    return !isDownwardStateTransition(message, stateModelDef) && hasUnfulfilledStates ? RebalanceType.RECOVERY_BALANCE
         : RebalanceType.LOAD_BALANCE;
   }
 

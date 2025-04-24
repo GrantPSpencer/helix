@@ -22,12 +22,10 @@ package org.apache.helix.controller.stages;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
-import java.util.Set;
 import org.apache.helix.api.config.StateTransitionThrottleConfig;
 import org.apache.helix.controller.dataproviders.ResourceControllerDataProvider;
 import org.apache.helix.model.ClusterConfig;
@@ -37,8 +35,6 @@ import org.apache.helix.model.OnlineOfflineWithBootstrapSMD;
 import org.apache.helix.model.Partition;
 import org.apache.helix.model.StateModelDefinition;
 import org.apache.helix.monitoring.mbeans.ClusterStatusMonitor;
-import org.apache.helix.tools.StateModelConfigGenerator;
-import org.apache.helix.zookeeper.datamodel.ZNRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -748,7 +744,4 @@ public class TestIntermediateStateCalcStage extends BaseStageTest {
             StateTransitionThrottleConfig.ThrottleScope.INSTANCE, 3)));
     setClusterConfig(_clusterConfig);
   }
-
-
-
 }
