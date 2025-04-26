@@ -53,6 +53,18 @@ public class CRUSHPlacementAlgorithm {
 
   private final boolean keepOffset;
   private final Map<Long,Integer> roundOffset;
+  public enum BucketType {
+    STRAW, STRAW2;
+
+    public static BucketType safeValueOf(String name) {
+      try {
+        return valueOf(name);
+      } catch (IllegalArgumentException | NullPointerException e) {
+        return DEFAULT_BUCKET_TYPE;
+      }
+    }
+  }
+  private static final BucketType DEFAULT_BUCKET_TYPE = BucketType.STRAW;
 
   /**
    * Creates the crush placement object.
@@ -78,11 +90,16 @@ public class CRUSHPlacementAlgorithm {
    * needed.
    */
   public List<Node> select(Node parent, long input, int count, String type) {
-    return select(parent, input, count, type, Predicates.<Node>alwaysTrue());
+    return select(parent, input, count, type, Predicates.<Node>alwaysTrue(), DEFAULT_BUCKET_TYPE);
   }
 
   public List<Node> select(Node parent, long input, int count, String type,
       Predicate<Node> nodePredicate) {
+    return select(parent, input, count, type, nodePredicate, DEFAULT_BUCKET_TYPE);
+  }
+
+  public List<Node> select(Node parent, long input, int count, String type,
+      Predicate<Node> nodePredicate, BucketType bucketType) {
     int childCount = parent.getChildrenCount(type);
     if (childCount < count) {
       logger.error(count + " nodes of type " + type +
@@ -119,7 +136,7 @@ public class CRUSHPlacementAlgorithm {
           retryNode = false; // initialize at the outset
           rPrime = r + offset + failure;
           logger.trace("{}.select({}, {})", new Object[] {in, input, rPrime});
-          Selector selector = new Selector(in);
+          Selector selector = getSelector(bucketType, in);
           out = selector.select(input, rPrime);
           if (!out.getType().equalsIgnoreCase(type)) {
             logger.trace("selected output {} for data {} didn't match the type {}: walking down " +
@@ -219,14 +236,31 @@ public class CRUSHPlacementAlgorithm {
     return true;
   }
 
+  private Selector getSelector(BucketType bucketType, Node in) {
+    if (bucketType == null) {
+      return new StrawSelector(in);
+    }
+
+    switch (bucketType) {
+      case STRAW2:
+        return new Straw2Selector(in);
+      default:
+        return new StrawSelector(in);
+    }
+  }
+
+  private interface Selector {
+    public Node select(long input, long round);
+  }
+
   /**
    * Selection algorithm based on the "straw" bucket type as described in the CRUSH algorithm.
    */
-  private class Selector {
+  private class StrawSelector implements Selector {
     private final Map<Node,Long> straws = new HashMap<Node,Long>();
     private final JenkinsHash hashFunction;
 
-    public Selector(Node node) {
+    public StrawSelector(Node node) {
       if (!node.isLeaf()) {
         // create a map from the nodes to their values
         List<Node> sortedNodes = sortNodes(node.getChildren()); // do a reverse sort by weight
@@ -319,6 +353,39 @@ public class CRUSHPlacementAlgorithm {
       hash = hash&0xffff;
       long weightedScore = hash*straw;
       return weightedScore;
+    }
+  }
+
+  private class Straw2Selector implements Selector {
+    private final List<Node> nodes;
+    private final JenkinsHash hashFunction;
+
+    public Straw2Selector(Node node) {
+      // create a map from the nodes to their values
+      nodes = node.getChildren();
+      hashFunction = new JenkinsHash();
+    }
+
+    public Node select(long input, long round) {
+      Node selected = null;
+      double hiScore = -1;
+      for (Node child : nodes) {;
+        double score = weightedScore(child, input, round);
+        if (score > hiScore) {
+          selected = child;
+          hiScore = score;
+        }
+      }
+      if (selected == null) {
+        throw new IllegalStateException();
+      }
+      return selected;
+    }
+
+    private double weightedScore(Node child, long input, long round) {
+      long hash = hashFunction.hash(input, child.getId(), round);
+      hash = hash&0xffff;
+      return Math.log(hash/65536d) / child.getWeight();
     }
   }
 }

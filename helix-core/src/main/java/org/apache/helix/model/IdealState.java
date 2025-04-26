@@ -70,7 +70,8 @@ public class IdealState extends HelixProperty {
     RESOURCE_GROUP_NAME,
     RESOURCE_TYPE,
     GROUP_ROUTING_ENABLED,
-    EXTERNAL_VIEW_DISABLED
+    EXTERNAL_VIEW_DISABLED,
+    CRUSH_BUCKET_TYPE
   }
 
   public static final String QUERY_LIST = "PREFERENCE_LIST_QUERYS";
@@ -555,7 +556,7 @@ public class IdealState extends HelixProperty {
 
   /**
    * Get the number of replicas for each partition of this resource. Return value can be "ANY_LIVEINSTANCE", use
-   * {@link #getReplicaCount(int)} to prevent NumberFormatException when parsing string for int. 
+   * {@link #getReplicaCount(int)} to prevent NumberFormatException when parsing string for int.
    * @return String value of the replica count,
    */
   public String getReplicas() {
@@ -650,6 +651,21 @@ public class IdealState extends HelixProperty {
    */
   public long getRebalanceTimerPeriod() {
     return _record.getLongField(IdealStateProperty.REBALANCE_TIMER_PERIOD.toString(), -1);
+  }
+
+  /**
+   * Set the bucket type used by the CRUSH rebalance strategy
+   */
+  public void setCrushBucketType(String crushBucketType) {
+    _record.setSimpleField(IdealStateProperty.CRUSH_BUCKET_TYPE.toString(), crushBucketType);
+  }
+
+  /**
+   * Get the bucket type used by the CRUSH rebalance strategy
+   * @return the bucket type, or null if none is set
+   */
+  public String getCrushBucketType() {
+    return _record.getSimpleField(IdealStateProperty.CRUSH_BUCKET_TYPE.toString());
   }
 
   @Override

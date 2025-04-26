@@ -34,6 +34,7 @@ import org.apache.helix.zookeeper.datamodel.ZNRecord;
 import org.apache.helix.controller.LogUtil;
 import org.apache.helix.controller.dataproviders.ResourceControllerDataProvider;
 import org.apache.helix.controller.rebalancer.strategy.crushMapping.CRUSHPlacementAlgorithm;
+import org.apache.helix.controller.rebalancer.strategy.crushMapping.CRUSHPlacementAlgorithm.BucketType;
 import org.apache.helix.controller.rebalancer.topology.InstanceNode;
 import org.apache.helix.controller.rebalancer.topology.Node;
 import org.apache.helix.controller.rebalancer.topology.Topology;
@@ -52,6 +53,7 @@ public class CrushRebalanceStrategy implements RebalanceStrategy<ResourceControl
   private List<String> _partitions;
   private Topology _clusterTopo;
   private int _replicas;
+  private BucketType _bucketType;
 
   @Override
   public void init(String resourceName, final List<String> partitions,
@@ -79,6 +81,9 @@ public class CrushRebalanceStrategy implements RebalanceStrategy<ResourceControl
     _clusterTopo =
         new Topology(allNodes, liveNodes, instanceConfigMap, clusterData.getClusterConfig(), true);
     Node topNode = _clusterTopo.getRootNode();
+    if (clusterData.getIdealState(_resourceName) != null) {
+      _bucketType = BucketType.safeValueOf(clusterData.getIdealState(_resourceName).getCrushBucketType());
+    }
 
     // for log only
     String eventId = clusterData.getClusterEventId();
@@ -168,18 +173,19 @@ public class CrushRebalanceStrategy implements RebalanceStrategy<ResourceControl
     if (!zoneType.equals(endNodeType)) {
       // pick fault zones first
       List<Node> zones = placementAlgorithm.select(topNode, input, rf, zoneType,
-          nodeAlreadySelected(selectedZones));
+          nodeAlreadySelected(selectedZones), _bucketType);
       // add the racks to the selected racks
       selectedZones.addAll(zones);
       // pick one end node from each fault zone.
       for (Node zone : zones) {
-        List<Node> endNode = placementAlgorithm.select(zone, input, 1, endNodeType);
+        List<Node> endNode = placementAlgorithm.select(zone, input, 1, endNodeType,
+            Predicates.<Node>alwaysTrue(), _bucketType);
         selectedNodes.addAll(endNode);
       }
     } else {
       // pick end node directly
       List<Node> nodes = placementAlgorithm
-          .select(topNode, input, rf, endNodeType, nodeAlreadySelected(new HashSet(selectedNodes)));
+          .select(topNode, input, rf, endNodeType, nodeAlreadySelected(new HashSet(selectedNodes)), _bucketType);
       selectedNodes.addAll(nodes);
     }
   }
