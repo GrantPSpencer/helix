@@ -817,7 +817,7 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
     }
 
     // Avoid reading the already known messages.
-    messageIds.removeAll(_knownMessageIds);
+//    messageIds.removeAll(_knownMessageIds);
     List<PropertyKey> keys = new ArrayList<>();
     for (String messageId : messageIds) {
       if (changeType.equals(HelixConstants.ChangeType.MESSAGE)) {
@@ -871,6 +871,9 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
       // If no messages are given, check and read all new messages.
       messages = readNewMessagesFromZK(manager, instanceName, changeContext.getChangeType());
     }
+
+    System.out.println("onMessage: " + instanceName + ", messages: " + messages
+        + ", changeContext: " + changeContext);
 
     if (_isShuttingDown) {
       StringBuilder sb = new StringBuilder();
@@ -1117,6 +1120,14 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
         return true;
       }
 
+      if (message.isExpired()) {
+        LOG.info(
+            "Dropping expired message. mid: " + message.getId() + ", from: " + message.getMsgSrc()
+                + " relayed from: " + message.getRelaySrcHost());
+        reportAndRemoveMessage(message, accessor, instanceName, ProcessedMessageState.DISCARDED);
+        return true;
+      }
+
       // don't process message that is of READ or UNPROCESSABLE state
       if (MessageState.NEW != message.getMsgState()) {
         // It happens because we don't delete message right after
@@ -1126,14 +1137,6 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
         if (LOG.isTraceEnabled()) {
           LOG.trace("Message already read. msgId: " + message.getMsgId());
         }
-        return true;
-      }
-
-      if (message.isExpired()) {
-        LOG.info(
-            "Dropping expired message. mid: " + message.getId() + ", from: " + message.getMsgSrc()
-                + " relayed from: " + message.getRelaySrcHost());
-        reportAndRemoveMessage(message, accessor, instanceName, ProcessedMessageState.DISCARDED);
         return true;
       }
 
@@ -1349,6 +1352,7 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
       _statusUpdateUtil.logError(message, HelixStateMachineEngine.class, errorMsg, manager);
     }
     message.setMsgState(MessageState.UNPROCESSABLE);
+    message.setExpiryPeriod(24*60*60*1000); // 24 hours
     _monitor.reportProcessedMessage(message, ProcessedMessageState.FAILED);
   }
 
