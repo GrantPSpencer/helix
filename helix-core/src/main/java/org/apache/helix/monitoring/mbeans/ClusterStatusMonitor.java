@@ -376,19 +376,30 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
    * @param messages a list of messages
    */
   public void increaseMessageReceived(List<Message> messages) {
+    increaseMessageReceived(messages, Collections.emptySet());
+  }
+
+  public void increaseMessageReceived(List<Message> messages, Set<Message> messagesForTransitToInitialState) {
     Map<String, Long> messageCountPerInstance = new HashMap<>();
     Map<String, Long> messageCountPerResource = new HashMap<>();
+    Map<String, Long> messageCountForTransitToInitialStatePerInstance = new HashMap<>();
+    Map<String, Long> messageCountForTransitToInitialStatePerResource = new HashMap<>();
 
     // Aggregate messages
     for (Message message : messages) {
       String instanceName = message.getAttribute(Message.Attributes.TGT_NAME);
       String resourceName = message.getAttribute(Message.Attributes.RESOURCE_NAME);
+      boolean isTransitToInitialState = messagesForTransitToInitialState.contains(message);
 
       if (instanceName != null) {
         if (!messageCountPerInstance.containsKey(instanceName)) {
           messageCountPerInstance.put(instanceName, 0L);
         }
         messageCountPerInstance.put(instanceName, messageCountPerInstance.get(instanceName) + 1L);
+        if (isTransitToInitialState) {
+          messageCountForTransitToInitialStatePerInstance.put(instanceName,
+              messageCountForTransitToInitialStatePerInstance.getOrDefault(instanceName, 0L) + 1L);
+        }
       }
 
       if (resourceName != null) {
@@ -396,6 +407,11 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
           messageCountPerResource.put(resourceName, 0L);
         }
         messageCountPerResource.put(resourceName, messageCountPerResource.get(resourceName) + 1L);
+
+        if (isTransitToInitialState) {
+          messageCountForTransitToInitialStatePerResource.put(resourceName,
+              messageCountForTransitToInitialStatePerResource.getOrDefault(resourceName, 0L) + 1L);
+        }
       }
     }
 
@@ -404,6 +420,9 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
       InstanceMonitor instanceMonitor = _instanceMonitorMap.get(instance);
       if (instanceMonitor != null) {
         instanceMonitor.increaseMessageCount(messageCountPerInstance.get(instance));
+        instanceMonitor.increaseTotalMessagesForTransitToInitialStateReceivedCounter(
+            messageCountForTransitToInitialStatePerInstance.getOrDefault(instance, 0L));
+
       }
     }
     for (String resource : messageCountPerResource.keySet()) {
@@ -411,6 +430,8 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
       if (resourceMonitor != null) {
         resourceMonitor.increaseMessageCount(messageCountPerResource.get(resource));
         resourceMonitor.increaseMessageCountWithCounter(messageCountPerResource.get(resource));
+        resourceMonitor.increaseTotalMessagesForTransitToInitialStateReceivedCounter(
+            messageCountForTransitToInitialStatePerResource.getOrDefault(resource, 0L));
       }
     }
   }
